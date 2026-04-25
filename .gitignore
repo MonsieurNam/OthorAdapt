@@ -1,0 +1,12 @@
+/old_result
+/PAPER_READING
+/result_new
+/result_scan_head
+/result_scan_loss
+/checkpoints_16shot
+/checkpoints_ablation_heads_lambda
+/results_ablation_heads_lambda
+/combined_performance_4shot.pdf
+/cp_scan_othorloss.zip
+/structure.txt
+/OrthoAdapt_v2.pdf
