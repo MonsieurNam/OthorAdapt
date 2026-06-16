@@ -131,7 +131,14 @@ def generate_sweep_commands(protocol):
 def write_commands(commands, path):
     out_path = Path(path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text("\n".join(commands) + "\n", encoding="utf-8")
+    header = [
+        "#!/usr/bin/env bash",
+        "set -euo pipefail",
+        ': "${DATA_ROOT:?Set DATA_ROOT=/path/to/datasets}"',
+        ': "${PYTHON:=python3}"',
+        "",
+    ]
+    out_path.write_text("\n".join(header + commands) + "\n", encoding="utf-8")
 
 
 def load_jsonl(path):

@@ -27,7 +27,7 @@ def protocol():
             "lambda_o": [0.01, 0.03],
         },
         "base_command": {
-            "python": "python",
+            "python": "$PYTHON",
             "entrypoint": "main.py",
             "root_path": "${DATA_ROOT}",
             "run_manifest": "revision_claude/results/validation_sweep_results.jsonl",
@@ -80,6 +80,7 @@ class Phase2ValidationSweepTest(unittest.TestCase):
         commands = generate_sweep_commands(protocol())
 
         self.assertEqual(len(commands), 40)
+        self.assertTrue(all(command.startswith("$PYTHON main.py ") for command in commands))
         self.assertTrue(all("--selection_split val" in command for command in commands))
         self.assertTrue(all("--sweep_mode" in command for command in commands))
         self.assertTrue(all("--run_manifest revision_claude/results/validation_sweep_results.jsonl" in command for command in commands))
