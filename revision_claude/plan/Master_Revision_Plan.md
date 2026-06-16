@@ -174,17 +174,17 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Close the test-set tuning issue before final test evaluation.
 
 **Required outputs:**
-- `selection_protocol.yaml`
-- `validation_sweep_results.jsonl`
-- `selected_config.md`
+- [x] `selection_protocol.yaml`. **Frozen in `revision_claude/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
+- [ ] `validation_sweep_results.jsonl`. **Pending server run; generated commands target `revision_claude/results/validation_sweep_results.jsonl`.**
+- [ ] `selected_config.md`. **Selector and dry-run are implemented; real file must be generated only after all server validation rows are present.**
 
 **Tasks:**
-- [ ] Freeze validation aggregate and rationale before running sweeps.
-- [ ] Sweep only validation data.
-- [ ] Record all candidates in JSONL.
-- [ ] Select winner by frozen rule only.
-- [ ] Hash and freeze `selected_config.md`.
-- [ ] Do not evaluate test data for non-winning candidates.
+- [x] Freeze validation aggregate and rationale before running sweeps. **Protocol selects by unweighted mean validation accuracy over EuroSAT and Caltech101, 4-shot, seeds {1,2,3}; candidate grid and tie-breaks match `Author_Decisions.md`.**
+- [x] Sweep only validation data. **`phase2_validation_sweep.py generate` produced 240 commands in `revision_claude/scripts/validation_sweep_commands.sh`; every command uses `--selection_split val` and `--sweep_mode`, with no `--report_test`.**
+- [x] Record all candidates in JSONL. **Command generator writes every candidate to `revision_claude/results/validation_sweep_results.jsonl`; actual rows remain pending server execution.**
+- [x] Select winner by frozen rule only. **Implemented in `phase2_validation_sweep.py select`; selector fails closed on non-validation rows, out-of-grid rows, and incomplete candidate coverage. Dry-run output: `revision_claude/results/selected_config_dry_run.md`.**
+- [ ] Hash and freeze `selected_config.md`. **Pending real server manifest; dry-run hash sidecar exists only for `selected_config_dry_run.md`.**
+- [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` explicitly blocks Phase 3 until `selected_config.md` exists.**
 
 ---
 
