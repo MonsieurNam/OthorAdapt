@@ -1,9 +1,11 @@
 import torch
 import torchvision.transforms as transforms
 import clip
+import sys
 from datasets import build_dataset
 from datasets.utils import build_data_loader
 
+from ecr3_provenance import args_to_config, dataset_provenance
 from utils import *
 from run_utils import *
 from lora import run_lora
@@ -25,6 +27,17 @@ def main():
     print("Preparing dataset.")
         
     dataset = build_dataset(args.dataset, args.root_path, args.shots, preprocess)
+    args.run_command = sys.argv
+    args.dataset_provenance = dataset_provenance(dataset)
+    args.checkpoint_extra_metadata = {
+        'ecr3': {
+            'schema_version': 'ecr3.checkpoint.v1',
+            'config': args_to_config(args),
+            'dataset': args.dataset_provenance,
+        }
+    }
+    for split_name, split_info in args.dataset_provenance['splits'].items():
+        print(f"ECR3 {split_name} split: count={split_info['count']}, sha256={split_info['sha256']}")
     
     if args.dataset == 'imagenet':
         val_loader = torch.utils.data.DataLoader(dataset.val, batch_size=256, num_workers=8, shuffle=False, pin_memory=True)

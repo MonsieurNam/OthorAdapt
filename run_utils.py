@@ -6,6 +6,7 @@ import argparse
 import numpy as np
 import torch
 
+from ecr3_provenance import validate_reporting_policy
 from lora import run_lora
 
 def set_random_seed(seed):
@@ -53,6 +54,8 @@ def get_arguments():
                         help='The scaling factor (lora_alpha).')
     parser.add_argument('--lambda_o', type=float, default=0.0,
                         help='Coefficient for the orthogonal regularization loss. Default: 0.0 (disabled).')
+    parser.add_argument('--ortho_reduction', type=str, default='mean', choices=['sum', 'mean'],
+                        help='Reduction for orthogonal regularization objective. Use mean to normalize by head-pair count.')
 
     # LoRA-specific arguments
     parser.add_argument('--dropout_rate', default=0.25, type=float,
@@ -65,6 +68,14 @@ def get_arguments():
 
     parser.add_argument('--save_path', default=None, help='Path to save the adapter modules after training. Not saved if None.')
     parser.add_argument('--filename', default='adapter_weights', help='File name to save the adapter weights (.pt extension will be added).')
+    parser.add_argument('--run_manifest', default=None,
+                        help='Optional JSONL path for ECR3 run records with config, split hashes, metrics, and checkpoint hash.')
+    parser.add_argument('--selection_split', default='val', choices=['val', 'test'],
+                        help='Split used for model/config selection. Default: val.')
+    parser.add_argument('--sweep_mode', default=False, action='store_true',
+                        help='Run as a validation sweep candidate; test reporting is forbidden.')
+    parser.add_argument('--report_test', default=False, action='store_true',
+                        help='Evaluate/report the test split only for the final selected configuration.')
 
     parser.add_argument('--eval_only', default=False, action='store_true', help='Only evaluate the adapter modules (save_path should not be None).')
 
@@ -80,6 +91,10 @@ def get_arguments():
     parser.add_argument('--gamma', type=float, default=2.0,
                     help='[Focal Loss only] The focusing parameter gamma.')
     args = parser.parse_args()
+    try:
+        validate_reporting_policy(args.selection_split, args.sweep_mode, args.report_test)
+    except ValueError as exc:
+        parser.error(str(exc))
 
 
     return args

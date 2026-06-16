@@ -93,13 +93,14 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         return original_output + final_adjustment
 
 
-def calculate_ortho_loss(lora_A_heads: torch.Tensor) -> torch.Tensor:
+def calculate_ortho_loss(lora_A_heads: torch.Tensor, reduction: str = 'sum') -> torch.Tensor:
     """
     Tính toán loss điều chuẩn trực giao cho các head của adapter.
     Loss này sẽ nhỏ khi các không gian con được sinh bởi các ma trận A_i là trực giao,
     và lớn khi chúng trùng lặp.
 
     Loss = sum_{i < j} || A_i^T @ A_j ||^2_F
+    Use reduction='mean' to divide by the number of head pairs.
 
     Args:
         lora_A_heads (torch.Tensor): Tensor chứa các ma trận A của các head.
@@ -108,10 +109,14 @@ def calculate_ortho_loss(lora_A_heads: torch.Tensor) -> torch.Tensor:
     Returns:
         torch.Tensor: Một scalar tensor chứa giá trị loss.
     """
+    if reduction not in {'sum', 'mean'}:
+        raise ValueError("reduction must be either 'sum' or 'mean'")
+
     if lora_A_heads.shape[0] <= 1:
         return torch.tensor(0.0, device=lora_A_heads.device, dtype=lora_A_heads.dtype)
 
     num_heads = lora_A_heads.shape[0]
+    num_pairs = num_heads * (num_heads - 1) // 2
 
     ortho_loss = torch.tensor(0.0, device=lora_A_heads.device, dtype=lora_A_heads.dtype)
 
@@ -122,5 +127,8 @@ def calculate_ortho_loss(lora_A_heads: torch.Tensor) -> torch.Tensor:
             product = A_i.T @ A_j
             loss_pair = torch.norm(product, p='fro')**2
             ortho_loss += loss_pair
+
+    if reduction == 'mean':
+        ortho_loss = ortho_loss / num_pairs
 
     return ortho_loss

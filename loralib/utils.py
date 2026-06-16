@@ -159,6 +159,7 @@ def save_lora(args, list_lora_layers):
         'params': args.params,
         'position': args.position
     }
+    metadata.update(getattr(args, 'checkpoint_extra_metadata', {}))
 
     save_data = {
         'weights': weights,
@@ -172,6 +173,7 @@ def save_lora(args, list_lora_layers):
     save_path = f'{save_dir}/{args.filename}.pt'
     torch.save(save_data, save_path)
     print(f'LoRA weights saved to {save_path}')
+    return save_path
 
 
 def load_lora(args, list_lora_layers):
@@ -301,6 +303,7 @@ def save_adapter(args, model):
         'encoder': args.encoder,
         'backbone': args.backbone,
     }
+    metadata.update(getattr(args, 'checkpoint_extra_metadata', {}))
 
     save_data = {
         'weights': adapter_state_dict,
@@ -314,6 +317,7 @@ def save_adapter(args, model):
 
     torch.save(save_data, save_path)
     print(f"{args.adapter.upper()} weights saved to {save_path}")
+    return save_path
 
 
 def load_adapter(args, model):

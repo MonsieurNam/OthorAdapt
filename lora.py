@@ -17,6 +17,7 @@ from losses.arcface import ArcFaceLoss
 from losses.cosface import CosFaceLoss
 from losses.max_entropy import MaximumEntropyLoss
 
+from ecr3_provenance import build_run_record, file_sha256, write_jsonl_record
 from loralib.utils import apply_lora, load_adapter, save_lora, load_lora, apply_adapter, mark_only_lora_as_trainable, get_lora_parameters, save_adapter
 from loralib.layers_OH_singlora import LinearOHsingLoRA, calculate_ortho_loss
 
@@ -59,18 +60,22 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
         torch.cuda.reset_peak_memory_stats()
         clip_model.cuda()
 
+    selection_split = getattr(args, "selection_split", "val")
+    report_test = getattr(args, "report_test", False)
+    selection_loader = val_loader if selection_split == "val" else test_loader
+
     print("\nGetting textual features as CLIP's classifier.")
     textual_features = clip_classifier(dataset.classnames, dataset.template, clip_model)
-    test_features, test_labels = pre_load_features(clip_model, test_loader)
+    selection_features, selection_labels = pre_load_features(clip_model, selection_loader)
 
-    test_features = test_features.cuda()
-    test_labels = test_labels.cuda()
+    selection_features = selection_features.cuda()
+    selection_labels = selection_labels.cuda()
 
-    clip_logits = logit_scale * test_features @ textual_features
-    zs_acc = cls_acc(clip_logits, test_labels)
-    print("\n**** Zero-shot CLIP's test accuracy: {:.2f}. ****\n".format(zs_acc))
+    clip_logits = logit_scale * selection_features @ textual_features
+    zs_selection_acc = cls_acc(clip_logits, selection_labels)
+    print(f"\n**** Zero-shot CLIP's {selection_split} accuracy: {zs_selection_acc:.2f}. ****\n")
 
-    del test_features, test_labels
+    del selection_features, selection_labels
     torch.cuda.empty_cache()
 
     list_adapter_layers = []
@@ -88,8 +93,26 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
         elif args.adapter in ['singlora', 'gmhsinglora', 'ohsinglora']:
             load_adapter(args, list_adapter_layers)
 
-        acc_test = evaluate(args, clip_model, test_loader, dataset)
-        print(f"**** Test accuracy: {acc_test:.2f}. ****\n")
+        acc_selection = evaluate(args, clip_model, selection_loader, dataset)
+        acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
+        print(f"**** {selection_split.capitalize()} accuracy: {acc_selection:.2f}. ****")
+        if acc_test is not None:
+            print(f"**** Test accuracy: {acc_test:.2f}. ****")
+        print("")
+        if args.run_manifest:
+            metrics = {
+                "selection_split": selection_split,
+                "zero_shot_selection_accuracy": zs_selection_acc,
+                "selection_accuracy": acc_selection,
+                "test_accuracy": acc_test,
+            }
+            record = build_run_record(
+                args,
+                getattr(args, "dataset_provenance", {}),
+                metrics,
+                status="eval_only",
+            )
+            write_jsonl_record(args.run_manifest, record)
         return
 
     mark_only_lora_as_trainable(clip_model)
@@ -133,7 +156,7 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
 
     while count_iters < total_iters:
         clip_model.train()
-        loss_epoch, class_loss_epoch, ortho_loss_epoch, aux_loss_epoch = 0., 0., 0., 0.
+        loss_epoch, class_loss_epoch, ortho_loss_epoch, ortho_loss_raw_epoch, aux_loss_epoch = 0., 0., 0., 0., 0.
         acc_train = 0
         tot_samples = 0
 
@@ -175,16 +198,19 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 aux_loss -= args.lambda_maxent * max_entropy_loss
 
             total_ortho_loss = torch.tensor(0.0, device=images.device, dtype=torch.float32)
+            total_ortho_loss_raw = torch.tensor(0.0, device=images.device, dtype=torch.float32)
             if args.lambda_o > 0 and args.adapter in ['ohsinglora', 'gmhsinglora']:
                 for module in clip_model.modules():
                     if isinstance(module, LinearOHsingLoRA):
-                        total_ortho_loss += calculate_ortho_loss(module.lora_A_heads)
+                        total_ortho_loss += calculate_ortho_loss(module.lora_A_heads, reduction=args.ortho_reduction)
+                        total_ortho_loss_raw += calculate_ortho_loss(module.lora_A_heads, reduction='sum')
 
             loss = class_loss.float() + aux_loss + args.lambda_o * total_ortho_loss
             acc_train += cls_acc(logit_scale * cosine_similarity, target) * target.shape[0]
             loss_epoch += loss.item() * target.shape[0]
             class_loss_epoch += class_loss.item() * target.shape[0]
             ortho_loss_epoch += total_ortho_loss.item() * target.shape[0]
+            ortho_loss_raw_epoch += total_ortho_loss_raw.item() * target.shape[0]
             aux_loss_epoch += aux_loss.item() * target.shape[0]
             tot_samples += target.shape[0]
 
@@ -213,24 +239,51 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
             loss_epoch /= tot_samples
             class_loss_epoch /= tot_samples
             ortho_loss_epoch /= tot_samples
+            ortho_loss_raw_epoch /= tot_samples
             aux_loss_epoch /= tot_samples
            
             current_lr = scheduler.get_last_lr()[0]
             print(f'LR: {current_lr:.6f}, Acc: {acc_train:.4f}, Total Loss: {loss_epoch:.4f} '
-                f'(Class: {class_loss_epoch:.4f}, Ortho: {ortho_loss_epoch:.4f}, Aux: {aux_loss_epoch:.4f})')
+                f'(Class: {class_loss_epoch:.4f}, Ortho-{args.ortho_reduction}: {ortho_loss_epoch:.4f}, '
+                f'Ortho-raw-sum: {ortho_loss_raw_epoch:.4f}, Aux: {aux_loss_epoch:.4f})')
 
     end_time = time.time()
     total_finetuning_time = end_time - start_time
     print(f"\nFine-tuning finished in {total_finetuning_time:.2f} seconds.")
 
-    acc_test = evaluate(args, clip_model, test_loader, dataset)
-    print(f"**** Final test accuracy with {args.adapter.upper()}: {acc_test:.2f}. ****\n")
+    acc_selection = evaluate(args, clip_model, selection_loader, dataset)
+    acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
+    print(f"**** Final {selection_split} accuracy with {args.adapter.upper()}: {acc_selection:.2f}. ****")
+    if acc_test is not None:
+        print(f"**** Final test accuracy with {args.adapter.upper()}: {acc_test:.2f}. ****")
+    print("")
 
+    checkpoint_path = ""
     if args.save_path is not None:
         print(f"Saving {args.adapter.upper()} weights to {args.save_path}...")
         if args.adapter == 'lora':
-            save_lora(args, list_adapter_layers)
+            checkpoint_path = save_lora(args, list_adapter_layers)
         elif args.adapter in ['singlora', 'gmhsinglora', 'ohsinglora']:
-            save_adapter(args, clip_model)
+            checkpoint_path = save_adapter(args, clip_model)
 
-    return acc_test
+    if args.run_manifest:
+        metrics = {
+            "selection_split": selection_split,
+            "zero_shot_selection_accuracy": zs_selection_acc,
+            "selection_accuracy": acc_selection,
+            "test_accuracy": acc_test,
+            "fine_tuning_seconds": total_finetuning_time,
+            "train_total_iterations": total_iters,
+            "ortho_reduction": getattr(args, "ortho_reduction", "sum"),
+        }
+        record = build_run_record(
+            args,
+            getattr(args, "dataset_provenance", {}),
+            metrics,
+            checkpoint_path=checkpoint_path,
+            checkpoint_sha256=file_sha256(checkpoint_path),
+            status="completed",
+        )
+        write_jsonl_record(args.run_manifest, record)
+
+    return acc_test if acc_test is not None else acc_selection
