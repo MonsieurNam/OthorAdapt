@@ -1,0 +1,44 @@
+{
+  "schema_version": "phase2.selection.v1",
+  "selection_split": "val",
+  "selection_metric": {
+    "datasets": [
+      "eurosat",
+      "caltech101"
+    ],
+    "shots": [
+      4
+    ],
+    "seeds": [
+      1,
+      2
+    ]
+  },
+  "candidate_grid": {
+    "num_heads": [
+      2,
+      4
+    ],
+    "r": [
+      2,
+      4
+    ],
+    "lambda_o": [
+      0.01,
+      0.03
+    ]
+  },
+  "tie_break": [
+    "parameter_count_asc",
+    "lambda_o_asc"
+  ],
+  "require_all_candidates": false,
+  "base_command": {
+    "python": "python",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "run_manifest": "revision_claude/results/validation_sweep_results.jsonl",
+    "save_path": "revision_claude/checkpoints/validation_sweep",
+    "adapter": "ohsinglora"
+  }
+}
