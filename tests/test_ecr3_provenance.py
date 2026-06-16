@@ -55,11 +55,12 @@ class ECR3ProvenanceTest(unittest.TestCase):
             lambda_o=0.03,
             params=["q", "k", "v"],
             run_manifest="out.jsonl",
+            git_revision="TESTREV",
         )
         record = build_run_record(
             args,
             dataset_provenance(Dataset()),
-            metrics={"val_accuracy": 88.1, "test_accuracy": 87.9},
+            metrics={"val_accuracy": 88.1, "test_accuracy": 87.9, "trainable_parameters": 42},
             checkpoint_path="checkpoints/model.pt",
             checkpoint_sha256="ABC123",
             status="completed",
@@ -70,6 +71,8 @@ class ECR3ProvenanceTest(unittest.TestCase):
         self.assertEqual(record["config"]["adapter"], "ohsinglora")
         self.assertEqual(record["metrics"]["val_accuracy"], 88.1)
         self.assertEqual(record["checkpoint"]["sha256"], "ABC123")
+        self.assertEqual(record["git_revision"], "TESTREV")
+        self.assertEqual(record["metrics"]["trainable_parameters"], 42)
         self.assertEqual(record["evidence_gate"]["seed_status"], "single_seed")
         self.assertEqual(record["evidence_gate"]["split_status"], "split_hash_recorded")
 

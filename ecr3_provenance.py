@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -25,6 +26,19 @@ def file_sha256(path):
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest().upper()
+
+
+def git_revision():
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return "UNKNOWN"
+    return result.stdout.strip() or "UNKNOWN"
 
 
 def _value(obj, name, default=None):
@@ -95,7 +109,12 @@ def dataset_provenance(dataset):
 def args_to_config(args):
     out = {}
     for key, value in vars(args).items():
-        if key.startswith("_") or key in {"dataset_provenance", "run_command", "checkpoint_extra_metadata"}:
+        if key.startswith("_") or key in {
+            "dataset_provenance",
+            "run_command",
+            "checkpoint_extra_metadata",
+            "git_revision",
+        }:
             continue
         if isinstance(value, (str, int, float, bool)) or value is None:
             out[key] = value
@@ -129,9 +148,11 @@ def build_run_record(
     config = args_to_config(args)
     seed = config.get("seed")
     split_hashes = dataset_info.get("splits", {}) if dataset_info else {}
+    revision = getattr(args, "git_revision", None) or git_revision()
     return {
         "schema_version": "ecr3.run.v1",
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "git_revision": revision,
         "command": list(command),
         "cwd": os.getcwd(),
         "config": config,

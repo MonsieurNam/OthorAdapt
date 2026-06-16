@@ -1,0 +1,3 @@
+dataset,shot,method,split,n,mean_accuracy,std_accuracy,ci95_half_width,seeds,parameter_count,runtime_seconds_total,git_revisions
+eurosat,4,lora,val,3,82.000000,2.000000,4.968676,1 2 3,1000,33.000000,DRYRUN
+eurosat,4,ohsinglora,val,3,85.000000,2.000000,4.968676,1 2 3,1300,42.000000,DRYRUN

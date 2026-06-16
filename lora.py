@@ -18,6 +18,7 @@ from losses.cosface import CosFaceLoss
 from losses.max_entropy import MaximumEntropyLoss
 
 from ecr3_provenance import build_run_record, file_sha256, write_jsonl_record
+from experiment_manifest import count_named_adapter_parameters
 from loralib.utils import apply_lora, load_adapter, save_lora, load_lora, apply_adapter, mark_only_lora_as_trainable, get_lora_parameters, save_adapter
 from loralib.layers_OH_singlora import LinearOHsingLoRA, calculate_ortho_loss
 
@@ -83,6 +84,7 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
         list_adapter_layers = apply_lora(args, clip_model)
     elif args.adapter in ['singlora', 'gmhsinglora', 'ohsinglora']:
         list_adapter_layers = apply_adapter(args, clip_model)
+    adapter_parameter_count = count_named_adapter_parameters(clip_model.named_parameters())
 
     clip_model = clip_model.cuda()
 
@@ -105,6 +107,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 "zero_shot_selection_accuracy": zs_selection_acc,
                 "selection_accuracy": acc_selection,
                 "test_accuracy": acc_test,
+                "runtime_seconds": 0.0,
+                "trainable_parameters": adapter_parameter_count,
             }
             record = build_run_record(
                 args,
@@ -117,7 +121,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
 
     mark_only_lora_as_trainable(clip_model)
     optimizer_params = get_lora_parameters(clip_model)
-    print(f"Number of trainable parameters: {sum(p.numel() for p in optimizer_params)}")
+    trainable_parameters = count_named_adapter_parameters(clip_model.named_parameters())
+    print(f"Number of trainable parameters: {trainable_parameters}")
     optimizer = torch.optim.AdamW(optimizer_params, weight_decay=1e-2, betas=(0.9, 0.999), lr=args.lr)
 
     print(f"\nUsing main loss function: {args.loss_fn.upper()}")
@@ -273,6 +278,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
             "selection_accuracy": acc_selection,
             "test_accuracy": acc_test,
             "fine_tuning_seconds": total_finetuning_time,
+            "runtime_seconds": total_finetuning_time,
+            "trainable_parameters": trainable_parameters,
             "train_total_iterations": total_iters,
             "ortho_reduction": getattr(args, "ortho_reduction", "sum"),
         }
