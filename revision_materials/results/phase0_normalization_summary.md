@@ -17,13 +17,13 @@
 
 | file | purpose |
 | --- | --- |
-| revision_claude/results/main_results_manifest.jsonl | Canonical log/CSV evidence manifest in JSONL |
-| revision_claude/results/main_results_manifest.csv | Same manifest in CSV |
-| revision_claude/results/missing_tier_a_matrix.csv | Tier-A coverage matrix |
-| revision_claude/results/missing_tier_a_matrix.md | Human-readable Tier-A coverage report |
-| revision_claude/results/workbook_vs_logs_crosscheck.csv | Workbook rows matched against recovered logs |
-| revision_claude/results/workbook_vs_logs_crosscheck.md | Human-readable workbook/log cross-check |
-| revision_claude/results/phase0_normalization_summary.md | This normalization summary |
+| revision_materials/results/main_results_manifest.jsonl | Canonical log/CSV evidence manifest in JSONL |
+| revision_materials/results/main_results_manifest.csv | Same manifest in CSV |
+| revision_materials/results/missing_tier_a_matrix.csv | Tier-A coverage matrix |
+| revision_materials/results/missing_tier_a_matrix.md | Human-readable Tier-A coverage report |
+| revision_materials/results/workbook_vs_logs_crosscheck.csv | Workbook rows matched against recovered logs |
+| revision_materials/results/workbook_vs_logs_crosscheck.md | Human-readable workbook/log cross-check |
+| revision_materials/results/phase0_normalization_summary.md | This normalization summary |
 
 ## Key Counts
 

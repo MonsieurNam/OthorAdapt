@@ -1,0 +1,77 @@
+{
+  "schema_version": "phase2.selection.v1",
+  "status": "FROZEN_BEFORE_SERVER_SWEEP",
+  "selection_split": "val",
+  "rationale": "Pre-registered validation-only selection to address the reviewer concern that hyperparameters were tuned on test data. EuroSAT represents domain-shifted remote sensing; Caltech101 represents general object diversity. The 4-shot setting is used as the calibration sweep to keep compute bounded before the full Tier-A matrix.",
+  "selection_metric": {
+    "name": "unweighted_mean_validation_accuracy",
+    "datasets": [
+      "eurosat",
+      "caltech101"
+    ],
+    "shots": [
+      4
+    ],
+    "seeds": [
+      1,
+      2,
+      3
+    ],
+    "rule": "Average validation accuracy uniformly across all completed dataset/shot/seed rows for each candidate. A candidate must cover every pre-registered dataset, shot, and seed to be eligible."
+  },
+  "candidate_grid": {
+    "num_heads": [
+      1,
+      2,
+      4
+    ],
+    "r": [
+      2,
+      4,
+      8
+    ],
+    "lambda_o": [
+      0.0,
+      0.01,
+      0.03,
+      0.05,
+      0.1
+    ],
+    "constraint": "Keep only candidates where r is divisible by num_heads."
+  },
+  "tie_break": [
+    "parameter_count_asc",
+    "lambda_o_asc"
+  ],
+  "require_all_candidates": true,
+  "base_command": {
+    "python": "$PYTHON",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "run_manifest": "revision_materials/results/validation_sweep_results.jsonl",
+    "save_path": "revision_materials/checkpoints/validation_sweep",
+    "adapter": "ohsinglora",
+    "backbone": "ViT-B/16",
+    "encoder": "both",
+    "position": "all",
+    "params": [
+      "q",
+      "k",
+      "v"
+    ],
+    "n_iters": 500,
+    "batch_size": 32,
+    "loss_fn": "ce",
+    "ortho_reduction": "mean"
+  },
+  "forbidden": {
+    "report_test": true,
+    "selection_split_test": true,
+    "test_metrics_for_non_winners": true
+  },
+  "expected_outputs_after_server_run": {
+    "manifest": "revision_materials/results/validation_sweep_results.jsonl",
+    "selected_config": "revision_materials/results/selected_config.md",
+    "selected_config_hash": "revision_materials/results/selected_config.md.sha256"
+  }
+}

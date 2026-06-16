@@ -17,10 +17,10 @@
 | Source | Role | Use |
 |---|---|---|
 | `revision_codex/docs/superpowers/plans/2026-06-15-reviewer-response-revision-plan.md` | Plan A: master scientific backbone | Primary task list, evidence gates, rerun logic, theory corrections |
-| `revision_claude/plan/Revision_Roadmap.md` | Plan B: communication / triage layer | Co-author-facing roadmap only |
-| `revision_claude/plan/Triage_Summary.md` | Plan B: triage layer | Quick issue dashboard only |
-| `revision_claude/plan/Response_Letter_Skeleton.md` | Template only | Response structure only; not evidence |
-| `revision_claude/plan/Judge_Report_PlanA_vs_PlanB.md` | Conflict-resolution authority | Missing items, Stop/Go gates, safety rules, Plan A vs Plan B resolution |
+| `revision_materials/plan/Revision_Roadmap.md` | Plan B: communication / triage layer | Co-author-facing roadmap only |
+| `revision_materials/plan/Triage_Summary.md` | Plan B: triage layer | Quick issue dashboard only |
+| `revision_materials/plan/Response_Letter_Skeleton.md` | Template only | Response structure only; not evidence |
+| `revision_materials/plan/Judge_Report_PlanA_vs_PlanB.md` | Conflict-resolution authority | Missing items, Stop/Go gates, safety rules, Plan A vs Plan B resolution |
 
 ### Evidence Priority
 
@@ -59,7 +59,7 @@ Do not write these phrases, or equivalent claims, unless supported by verified a
 
 ## 1. Author_Decisions.md
 
-**File:** `revision_claude/plan/Author_Decisions.md`
+**File:** `revision_materials/plan/Author_Decisions.md`
 
 Author decisions must be recorded before running experiments that depend on them.
 
@@ -96,7 +96,7 @@ Author decisions must be recorded before running experiments that depend on them
 
 **Tasks:**
 - [x] Search for original checkpoints, logs, CSVs, notebooks, Colab outputs, and seed records. **Complete after raw-evidence update: 724 logs, 5 CSV summaries, 20 zip archives, 153 loadable checkpoints, 1 workbook, and figure/source assets recovered; notebooks, split hashes, final rerun/evaluation manifests, and seed2/seed3 evidence remain missing.**
-- [x] Hash every recovered artifact and record path, timestamp, command/config, seed, split, and linked manuscript value. **Complete via `artifact_inventory.md`, `phase0_raw_artifact_manifest.csv`, and `revision_claude/results/main_results_manifest.*`; log final accuracies, zero-shot accuracies, CSV rows, checkpoint metadata, and path-derived hints were extracted where available, but split/seed/config metadata remain incomplete.**
+- [x] Hash every recovered artifact and record path, timestamp, command/config, seed, split, and linked manuscript value. **Complete via `artifact_inventory.md`, `phase0_raw_artifact_manifest.csv`, and `revision_materials/results/main_results_manifest.*`; log final accuracies, zero-shot accuracies, CSV rows, checkpoint metadata, and path-derived hints were extracted where available, but split/seed/config metadata remain incomplete.**
 - [x] Mark each manuscript number as `VERIFIED`, `UNVERIFIED_RERUN_REQUIRED`, or `SOURCE-CODE_INSPECTION_REQUIRED`. **Complete in `revision_traceability.csv`, `unresolved_numbers.md`, `missing_tier_a_matrix.*`, and `workbook_vs_logs_crosscheck.*`; no acceptance-critical numerical claim is currently verified because seed2/seed3/split-hash evidence and final validation/test manifests are still absent.**
 - [x] Create `reviewer_table_figure_mapping.md` before editing any response paragraph. **Complete after raw-log/checkpoint evidence update.**
 
@@ -155,17 +155,17 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Make reruns reproducible and table generation single-source.
 
 **Required outputs:**
-- [x] metadata schema. **Defined in `revision_claude/plan/phase1b_run_manifest_schema.md`; nested ECR3 records normalize to the canonical flat row.**
+- [x] metadata schema. **Defined in `revision_materials/plan/phase1b_run_manifest_schema.md`; nested ECR3 records normalize to the canonical flat row.**
 - [x] run manifest schema. **Implemented by `experiment_manifest.py` with `phase1b.run.v1` validation and fail-closed required fields.**
 - [x] documented `statistical_tests.py` output format. **Documented in `statistical_tests.py` and `phase1b_run_manifest_schema.md`: mean, sample std, 95% CI, paired deltas, paired CI, and paired Cohen dz.**
-- [x] aggregation dry-run logs. **Dry-run fixture: `revision_claude/fixtures/phase1b_dry_run_manifest.jsonl`; generated summary: `revision_claude/results/phase1b_dry_run_summary.csv`.**
+- [x] aggregation dry-run logs. **Dry-run fixture: `revision_materials/fixtures/phase1b_dry_run_manifest.jsonl`; generated summary: `revision_materials/results/phase1b_dry_run_summary.csv`.**
 
 **Tasks:**
 - [x] Define JSONL row schema for run results. **Canonical flat schema is `phase1b.run.v1`; nested ECR3 records are accepted and normalized.**
 - [x] Add config, seed, split, dataset, method, shot, accuracy, runtime, parameter count, checkpoint hash, and git revision. **`ecr3_provenance.build_run_record` now records `git_revision`; `lora.py` writes runtime and trainable parameter count into manifest metrics; `experiment_manifest.validate_run_record` enforces all aggregation fields.**
 - [x] Implement or repair aggregation script. **Implemented `aggregate_results.py` with JSONL loader, fail-closed validation, grouped aggregation, and CSV export.**
 - [x] Implement statistical report format with means, standard deviations, CIs, paired tests, and effect sizes. **Implemented in `aggregate_results.aggregate_manifest`; `statistical_tests.py` documents the output contract.**
-- [x] Add dry-run fixtures so the aggregation pipeline can be tested before expensive experiments. **Added `revision_claude/fixtures/phase1b_dry_run_manifest.jsonl` and verified aggregation to `revision_claude/results/phase1b_dry_run_summary.csv`.**
+- [x] Add dry-run fixtures so the aggregation pipeline can be tested before expensive experiments. **Added `revision_materials/fixtures/phase1b_dry_run_manifest.jsonl` and verified aggregation to `revision_materials/results/phase1b_dry_run_summary.csv`.**
 
 ---
 
@@ -174,15 +174,15 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Close the test-set tuning issue before final test evaluation.
 
 **Required outputs:**
-- [x] `selection_protocol.yaml`. **Frozen in `revision_claude/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
-- [ ] `validation_sweep_results.jsonl`. **Pending server run; generated commands target `revision_claude/results/validation_sweep_results.jsonl`.**
+- [x] `selection_protocol.yaml`. **Frozen in `revision_materials/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
+- [ ] `validation_sweep_results.jsonl`. **Pending server run; generated commands target `revision_materials/results/validation_sweep_results.jsonl`.**
 - [ ] `selected_config.md`. **Selector and dry-run are implemented; real file must be generated only after all server validation rows are present.**
 
 **Tasks:**
 - [x] Freeze validation aggregate and rationale before running sweeps. **Protocol selects by unweighted mean validation accuracy over EuroSAT and Caltech101, 4-shot, seeds {1,2,3}; candidate grid and tie-breaks match `Author_Decisions.md`.**
-- [x] Sweep only validation data. **`phase2_validation_sweep.py generate` produced 240 commands in `revision_claude/scripts/validation_sweep_commands.sh`; every command uses `--selection_split val` and `--sweep_mode`, with no `--report_test`.**
-- [x] Record all candidates in JSONL. **Command generator writes every candidate to `revision_claude/results/validation_sweep_results.jsonl`; actual rows remain pending server execution.**
-- [x] Select winner by frozen rule only. **Implemented in `phase2_validation_sweep.py select`; selector fails closed on non-validation rows, out-of-grid rows, and incomplete candidate coverage. Dry-run output: `revision_claude/results/selected_config_dry_run.md`.**
+- [x] Sweep only validation data. **`phase2_validation_sweep.py generate` produced 240 commands in `revision_materials/scripts/validation_sweep_commands.sh`; every command uses `--selection_split val` and `--sweep_mode`, with no `--report_test`.**
+- [x] Record all candidates in JSONL. **Command generator writes every candidate to `revision_materials/results/validation_sweep_results.jsonl`; actual rows remain pending server execution.**
+- [x] Select winner by frozen rule only. **Implemented in `phase2_validation_sweep.py select`; selector fails closed on non-validation rows, out-of-grid rows, and incomplete candidate coverage. Dry-run output: `revision_materials/results/selected_config_dry_run.md`.**
 - [ ] Hash and freeze `selected_config.md`. **Pending real server manifest; dry-run hash sidecar exists only for `selected_config_dry_run.md`.**
 - [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` explicitly blocks Phase 3 until `selected_config.md` exists.**
 

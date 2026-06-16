@@ -37,8 +37,8 @@
     "python": "python",
     "entrypoint": "main.py",
     "root_path": "${DATA_ROOT}",
-    "run_manifest": "revision_claude/results/validation_sweep_results.jsonl",
-    "save_path": "revision_claude/checkpoints/validation_sweep",
+    "run_manifest": "revision_materials/results/validation_sweep_results.jsonl",
+    "save_path": "revision_materials/checkpoints/validation_sweep",
     "adapter": "ohsinglora"
   }
 }

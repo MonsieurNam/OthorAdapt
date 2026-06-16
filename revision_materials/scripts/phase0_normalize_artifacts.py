@@ -20,8 +20,8 @@ from xml.etree import ElementTree as ET
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PLAN_DIR = ROOT / "revision_claude" / "plan"
-RESULTS_DIR = ROOT / "revision_claude" / "results"
+PLAN_DIR = ROOT / "revision_materials" / "plan"
+RESULTS_DIR = ROOT / "revision_materials" / "results"
 MANIFEST_PATH = PLAN_DIR / "phase0_raw_artifact_manifest.csv"
 WORKBOOK_PATH = ROOT / "data" / "clip_fewshot_results.xlsx"
 

@@ -30,8 +30,8 @@ def protocol():
             "python": "$PYTHON",
             "entrypoint": "main.py",
             "root_path": "${DATA_ROOT}",
-            "run_manifest": "revision_claude/results/validation_sweep_results.jsonl",
-            "save_path": "revision_claude/checkpoints/validation_sweep",
+            "run_manifest": "revision_materials/results/validation_sweep_results.jsonl",
+            "save_path": "revision_materials/checkpoints/validation_sweep",
             "adapter": "ohsinglora",
             "backbone": "ViT-B/16",
             "encoder": "both",
@@ -83,7 +83,7 @@ class Phase2ValidationSweepTest(unittest.TestCase):
         self.assertTrue(all(command.startswith("$PYTHON main.py ") for command in commands))
         self.assertTrue(all("--selection_split val" in command for command in commands))
         self.assertTrue(all("--sweep_mode" in command for command in commands))
-        self.assertTrue(all("--run_manifest revision_claude/results/validation_sweep_results.jsonl" in command for command in commands))
+        self.assertTrue(all("--run_manifest revision_materials/results/validation_sweep_results.jsonl" in command for command in commands))
         self.assertTrue(all("--report_test" not in command for command in commands))
 
     def test_select_winner_uses_unweighted_mean_then_tie_breaks(self):
