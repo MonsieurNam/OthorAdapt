@@ -21,5 +21,7 @@
 /revision_codex
 /revision_materials/plan
 /revision_materials/tests
+/revision_materials/logs
+/revision_materials/checkpoints
 /kaggle_upload_single
 /.kaggle_meta_probe

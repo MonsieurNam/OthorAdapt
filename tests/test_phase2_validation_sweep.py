@@ -32,6 +32,7 @@ def protocol():
             "root_path": "${DATA_ROOT}",
             "run_manifest": "revision_materials/results/validation_sweep_results.jsonl",
             "save_path": "revision_materials/checkpoints/validation_sweep",
+            "log_dir": "revision_materials/logs/validation_sweep",
             "adapter": "ohsinglora",
             "backbone": "ViT-B/16",
             "encoder": "both",
@@ -80,10 +81,12 @@ class Phase2ValidationSweepTest(unittest.TestCase):
         commands = generate_sweep_commands(protocol())
 
         self.assertEqual(len(commands), 40)
-        self.assertTrue(all(command.startswith("$PYTHON main.py ") for command in commands))
+        self.assertTrue(all(command.startswith("mkdir -p revision_materials/logs/validation_sweep && $PYTHON main.py ") for command in commands))
         self.assertTrue(all("--selection_split val" in command for command in commands))
         self.assertTrue(all("--sweep_mode" in command for command in commands))
         self.assertTrue(all("--run_manifest revision_materials/results/validation_sweep_results.jsonl" in command for command in commands))
+        self.assertTrue(all("2>&1 | tee revision_materials/logs/validation_sweep/" in command for command in commands))
+        self.assertTrue(any("eurosat_4shot_seed1_val_ohsinglora_h1_r2_lo0p01.log" in command for command in commands))
         self.assertTrue(all("--report_test" not in command for command in commands))
 
     def test_select_winner_uses_unweighted_mean_then_tie_breaks(self):

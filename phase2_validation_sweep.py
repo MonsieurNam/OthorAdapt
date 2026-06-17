@@ -72,7 +72,7 @@ def _lambda_tag(value):
 
 def _base_flags(base):
     flags = []
-    skip = {"python", "entrypoint", "run_manifest", "save_path", "adapter"}
+    skip = {"python", "entrypoint", "run_manifest", "save_path", "log_dir", "adapter"}
     for key, value in base.items():
         if key in skip:
             continue
@@ -92,6 +92,7 @@ def generate_sweep_commands(protocol):
     base = protocol["base_command"]
     commands = []
     base_flags = _base_flags(base)
+    log_dir = base.get("log_dir", "revision_materials/logs/validation_sweep")
 
     for candidate in candidate_grid(protocol):
         filename = (
@@ -115,15 +116,19 @@ def generate_sweep_commands(protocol):
                         "--selection_split val",
                         "--sweep_mode",
                     ]
+                    log_path = (
+                        f"{log_dir}/{dataset}_{int(shot)}shot_seed{int(seed)}_{filename}.log"
+                    )
+                    run_command = " ".join(
+                        [
+                            _quote(base["python"]),
+                            _quote(base["entrypoint"]),
+                            *base_flags,
+                            *flags,
+                        ]
+                    )
                     commands.append(
-                        " ".join(
-                            [
-                                _quote(base["python"]),
-                                _quote(base["entrypoint"]),
-                                *base_flags,
-                                *flags,
-                            ]
-                        )
+                        f"mkdir -p {_quote(log_dir)} && {run_command} 2>&1 | tee {_quote(log_path)}"
                     )
     return commands
 

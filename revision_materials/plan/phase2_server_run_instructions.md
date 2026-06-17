@@ -42,6 +42,7 @@ Every command must include:
 - `--sweep_mode`
 - `--run_manifest revision_materials/results/validation_sweep_results.jsonl`
 - `$PYTHON` as the interpreter, defaulting to `python3`
+- `2>&1 | tee revision_materials/logs/validation_sweep/<run>.log` so stdout and stderr are saved per run
 
 No command may include `--report_test`.
 
