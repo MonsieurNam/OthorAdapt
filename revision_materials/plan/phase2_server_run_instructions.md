@@ -28,7 +28,7 @@ The generated sweep commands are:
 revision_materials/scripts/validation_sweep_commands.sh
 ```
 
-Expected command count: 240.
+Expected command count: 120.
 
 ## 2. Run Validation Sweep
 
@@ -42,13 +42,13 @@ Every command must include:
 - `--sweep_mode`
 - `--run_manifest revision_materials/results/validation_sweep_results.jsonl`
 - `$PYTHON` as the interpreter, defaulting to `python3`
-- `2>&1 | tee revision_materials/logs/validation_sweep/<run>.log` so stdout and stderr are saved per run
+- `2>&1 | tee revision_materials/logs/validation_sweep/<run>_${RUN_STAMP}.log` so stdout and stderr are saved per run without overwriting logs from a later rerun
 
 No command may include `--report_test`.
 
 ## 3. Freeze Selected Config
 
-After all 240 validation rows are present:
+After all 120 validation rows are present:
 
 ```bash
 python phase2_validation_sweep.py select \

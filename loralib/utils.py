@@ -284,6 +284,23 @@ def apply_adapter(args, clip_model):
     print("Finished applying adapters.")
     return []
 
+
+def adapter_checkpoint_path(args):
+    backbone_str = args.backbone.replace('/', '')
+    filename = getattr(args, 'filename', 'adapter_weights') or 'adapter_weights'
+    if not filename.endswith('.pt'):
+        filename = f'{filename}.pt'
+    return os.path.join(
+        args.save_path,
+        args.adapter,
+        backbone_str,
+        args.dataset,
+        f"{args.shots}shots",
+        f"seed{args.seed}",
+        filename,
+    )
+
+
 def save_adapter(args, model):
     """
     Hàm chung để lưu các trọng số có thể huấn luyện của adapter.
@@ -310,10 +327,9 @@ def save_adapter(args, model):
         'metadata': metadata
     }
 
-    backbone_str = args.backbone.replace('/', '')
-    save_dir = os.path.join(args.save_path, args.adapter, backbone_str, args.dataset, f"{args.shots}shots", f"seed{args.seed}")
+    save_path = adapter_checkpoint_path(args)
+    save_dir = os.path.dirname(save_path)
     os.makedirs(save_dir, exist_ok=True)
-    save_path = os.path.join(save_dir, 'adapter_weights.pt')
 
     torch.save(save_data, save_path)
     print(f"{args.adapter.upper()} weights saved to {save_path}")
@@ -324,8 +340,7 @@ def load_adapter(args, model):
     """
     Hàm chung để tải các trọng số adapter vào mô hình.
     """
-    backbone_str = args.backbone.replace('/', '')
-    load_path = os.path.join(args.save_path, args.adapter, backbone_str, args.dataset, f"{args.shots}shots", f"seed{args.seed}", 'adapter_weights.pt')
+    load_path = adapter_checkpoint_path(args)
 
     if not os.path.exists(load_path):
         raise FileNotFoundError(f"Adapter weights not found at: {load_path}")

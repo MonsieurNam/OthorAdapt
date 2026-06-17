@@ -95,13 +95,14 @@ def generate_sweep_commands(protocol):
     log_dir = base.get("log_dir", "revision_materials/logs/validation_sweep")
 
     for candidate in candidate_grid(protocol):
-        filename = (
-            f"val_{base['adapter']}_h{candidate['num_heads']}"
-            f"_r{candidate['r']}_lo{_lambda_tag(candidate['lambda_o'])}"
-        )
         for dataset in metric["datasets"]:
             for shot in metric["shots"]:
                 for seed in metric["seeds"]:
+                    filename = (
+                        f"{dataset}_{int(shot)}shot_seed{int(seed)}_val_{base['adapter']}"
+                        f"_h{candidate['num_heads']}_r{candidate['r']}"
+                        f"_lo{_lambda_tag(candidate['lambda_o'])}"
+                    )
                     flags = [
                         f"--dataset {_quote(dataset)}",
                         f"--shots {int(shot)}",
@@ -116,9 +117,7 @@ def generate_sweep_commands(protocol):
                         "--selection_split val",
                         "--sweep_mode",
                     ]
-                    log_path = (
-                        f"{log_dir}/{dataset}_{int(shot)}shot_seed{int(seed)}_{filename}.log"
-                    )
+                    log_path = f"{log_dir}/{filename}_${{RUN_STAMP}}.log"
                     run_command = " ".join(
                         [
                             _quote(base["python"]),
@@ -141,6 +140,7 @@ def write_commands(commands, path):
         "set -euo pipefail",
         ': "${DATA_ROOT:?Set DATA_ROOT=/path/to/datasets}"',
         ': "${PYTHON:=python3}"',
+        ': "${RUN_STAMP:=$(date +%Y%m%d_%H%M%S)}"',
         "",
     ]
     out_path.write_text("\n".join(header + commands) + "\n", encoding="utf-8")

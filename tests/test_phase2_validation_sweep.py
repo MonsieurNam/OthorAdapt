@@ -22,9 +22,9 @@ def protocol():
             "seeds": [1, 2],
         },
         "candidate_grid": {
-            "num_heads": [1, 2, 4],
-            "r": [2, 4],
-            "lambda_o": [0.01, 0.03],
+            "num_heads": [2, 4],
+            "r": [2, 4, 8],
+            "lambda_o": [0.0, 0.01, 0.03, 0.05],
         },
         "base_command": {
             "python": "$PYTHON",
@@ -74,20 +74,34 @@ class Phase2ValidationSweepTest(unittest.TestCase):
     def test_candidate_grid_keeps_only_rank_divisible_by_head_count(self):
         candidates = candidate_grid(protocol())
 
+        self.assertEqual(len(candidates), 20)
         self.assertIn({"num_heads": 4, "r": 4, "lambda_o": 0.03}, candidates)
+        self.assertIn({"num_heads": 2, "r": 2, "lambda_o": 0.0}, candidates)
         self.assertNotIn({"num_heads": 4, "r": 2, "lambda_o": 0.01}, candidates)
+        self.assertNotIn({"num_heads": 1, "r": 2, "lambda_o": 0.01}, candidates)
 
     def test_generate_sweep_commands_are_validation_only_and_manifested(self):
         commands = generate_sweep_commands(protocol())
 
-        self.assertEqual(len(commands), 40)
+        self.assertEqual(len(commands), 80)
         self.assertTrue(all(command.startswith("mkdir -p revision_materials/logs/validation_sweep && $PYTHON main.py ") for command in commands))
         self.assertTrue(all("--selection_split val" in command for command in commands))
         self.assertTrue(all("--sweep_mode" in command for command in commands))
         self.assertTrue(all("--run_manifest revision_materials/results/validation_sweep_results.jsonl" in command for command in commands))
         self.assertTrue(all("2>&1 | tee revision_materials/logs/validation_sweep/" in command for command in commands))
-        self.assertTrue(any("eurosat_4shot_seed1_val_ohsinglora_h1_r2_lo0p01.log" in command for command in commands))
+        self.assertTrue(any("--filename eurosat_4shot_seed1_val_ohsinglora_h2_r2_lo0p0" in command for command in commands))
+        self.assertTrue(any("eurosat_4shot_seed1_val_ohsinglora_h2_r2_lo0p0_${RUN_STAMP}.log" in command for command in commands))
         self.assertTrue(all("--report_test" not in command for command in commands))
+
+    def test_frozen_protocol_generates_120_runs(self):
+        frozen = load_protocol("revision_materials/plan/selection_protocol.yaml")
+        commands = generate_sweep_commands(frozen)
+
+        self.assertEqual(len(candidate_grid(frozen)), 20)
+        self.assertEqual(len(commands), 120)
+        self.assertTrue(all("--num_heads 1" not in command for command in commands))
+        self.assertTrue(all("--lambda_o 0.1" not in command for command in commands))
+        self.assertTrue(any("--lambda_o 0.0" in command for command in commands))
 
     def test_select_winner_uses_unweighted_mean_then_tie_breaks(self):
         rows = [

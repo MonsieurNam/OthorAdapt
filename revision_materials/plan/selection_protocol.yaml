@@ -21,7 +21,6 @@
   },
   "candidate_grid": {
     "num_heads": [
-      1,
       2,
       4
     ],
@@ -34,8 +33,7 @@
       0.0,
       0.01,
       0.03,
-      0.05,
-      0.1
+      0.05
     ],
     "constraint": "Keep only candidates where r is divisible by num_heads."
   },
