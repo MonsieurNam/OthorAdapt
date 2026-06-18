@@ -19,7 +19,6 @@ def protocol():
         "seeds": [1, 2],
         "methods": [
             {"adapter": "lora", "r": 4, "alpha": 1, "num_heads": 2, "lambda_o": 0.0},
-            {"adapter": "singlora", "r": 4, "alpha": 1, "num_heads": 2, "lambda_o": 0.0},
             {"adapter": "ohsinglora", "r": 4, "alpha": 1, "num_heads": 2, "lambda_o": 0.0},
         ],
         "base_command": {
@@ -45,7 +44,7 @@ class Phase3MainExperimentTest(unittest.TestCase):
     def test_generate_main_commands_are_test_only_for_selected_config(self):
         commands = generate_main_commands(protocol())
 
-        self.assertEqual(len(commands), 12)
+        self.assertEqual(len(commands), 8)
         self.assertTrue(all(command.startswith("mkdir -p revision_materials/logs/phase3_main && $PYTHON main.py ") for command in commands))
         self.assertTrue(all("--selection_split test" in command for command in commands))
         self.assertTrue(all("--report_test" in command for command in commands))
@@ -55,22 +54,22 @@ class Phase3MainExperimentTest(unittest.TestCase):
         self.assertTrue(any("--filename eurosat_4shot_seed1_test_ohsinglora_h2_r4_lo0p0" in command for command in commands))
         self.assertTrue(any("eurosat_4shot_seed1_test_ohsinglora_h2_r4_lo0p0_${RUN_STAMP}.log" in command for command in commands))
 
-    def test_frozen_phase3_protocol_generates_216_runs(self):
+    def test_frozen_phase3_protocol_generates_144_runs(self):
         frozen = load_protocol("revision_materials/plan/phase3_main_protocol.yaml")
         commands = generate_main_commands(frozen)
 
-        self.assertEqual(len(commands), 216)
+        self.assertEqual(len(commands), 144)
         self.assertTrue(all("--selection_split test" in command for command in commands))
         self.assertTrue(all("--report_test" in command for command in commands))
         self.assertTrue(all("--sweep_mode" not in command for command in commands))
         self.assertEqual(sum("--adapter ohsinglora" in command for command in commands), 72)
         self.assertEqual(sum("--adapter lora" in command for command in commands), 72)
-        self.assertEqual(sum("--adapter singlora" in command for command in commands), 72)
+        self.assertTrue(all("--adapter singlora" not in command for command in commands))
         self.assertTrue(all("--lambda_o 0.03" not in command for command in commands if "--adapter ohsinglora" in command))
 
     def test_validate_protocol_rejects_unselected_orthoadapt_config(self):
         bad = protocol()
-        bad["methods"][2]["lambda_o"] = 0.03
+        bad["methods"][1]["lambda_o"] = 0.03
 
         with self.assertRaisesRegex(ValueError, "selected OrthoAdapt"):
             validate_protocol(bad)

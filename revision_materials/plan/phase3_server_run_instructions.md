@@ -23,7 +23,7 @@ The generated commands are:
 revision_materials/scripts/phase3_main_commands.sh
 ```
 
-Expected command count: 216.
+Expected command count: 144.
 
 ## 2. Run Main Matrix
 
@@ -50,9 +50,11 @@ The only OrthoAdapt configuration allowed in Phase 3 is:
 adapter=ohsinglora, num_heads=2, r=4, lambda_o=0.0
 ```
 
+SingLoRA-CLIP is intentionally excluded from this main matrix because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline. The reviewer-facing rationale is recorded in `revision_materials/plan/singlora_clip_baseline_note.md`.
+
 ## 3. Aggregate
 
-After all 216 rows are present:
+After all 144 rows are present:
 
 ```bash
 python aggregate_results.py \

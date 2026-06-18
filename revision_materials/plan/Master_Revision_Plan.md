@@ -196,10 +196,10 @@ Author decisions must be recorded before running experiments that depend on them
 - `main_results_manifest.jsonl`
 - `statistical_report.md`
 - `generated_tables.tex`
-- [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. The script contains 216 test-set commands: 8 datasets x 3 shots x 3 methods x 3 seeds.**
+- [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. Updated to 144 test-set commands: 8 datasets x 3 shots x 2 methods x 3 seeds. SingLoRA-CLIP is excluded from the main matrix by author decision because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline.**
 
 **Minimum Tier A tasks:**
-- [ ] Run CLIP-LoRA, SingLoRA, and OrthoAdapt.
+- [ ] Run CLIP-LoRA and OrthoAdapt. SingLoRA-CLIP is documented as excluded from the main baseline matrix; do not present it as Tier-A reviewer evidence.
 - [ ] Use all original main datasets and shots.
 - [ ] Use at least three seeds.
 - [ ] Add paired statistics and confidence intervals.
@@ -359,7 +359,7 @@ The agent must not treat planning files, response-letter skeletons, or speculati
 If time or compute is constrained, prioritize:
 1. fix PSD/rank theoretical claim,
 2. fix test-set tuning with validation-only protocol,
-3. rerun CLIP-LoRA, SingLoRA, and OrthoAdapt with three seeds,
+3. rerun CLIP-LoRA and OrthoAdapt with three seeds,
 4. add statistical tests and confidence intervals,
 5. fix table/figure inconsistencies,
 6. add ViT-L/14 subset if feasible,

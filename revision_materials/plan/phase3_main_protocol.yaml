@@ -7,7 +7,7 @@
     "validation_manifest": "revision_materials/results/validation_sweep_results_protocol.jsonl",
     "validation_audit": "revision_materials/results/validation_sweep_protocol_audit.md"
   },
-  "rationale": "Phase 3 evaluates the final selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. Baselines are run with the same selected rank budget for paired seed-level comparisons.",
+  "rationale": "Phase 3 evaluates the final selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. The main matrix compares OrthoAdapt against the public CLIP-LoRA baseline with the same selected rank budget for paired seed-level comparisons. SingLoRA-CLIP is excluded from the main matrix because it is an internal unpublished CLIP adaptation rather than a stable citable few-shot CLIP baseline.",
   "datasets": [
     "fgvc",
     "eurosat",
@@ -31,13 +31,6 @@
   "methods": [
     {
       "adapter": "lora",
-      "r": 4,
-      "alpha": 1,
-      "num_heads": 2,
-      "lambda_o": 0.0
-    },
-    {
-      "adapter": "singlora",
       "r": 4,
       "alpha": 1,
       "num_heads": 2,
@@ -71,7 +64,7 @@
     "loss_fn": "ce",
     "ortho_reduction": "mean"
   },
-  "expected_command_count": 216,
+  "expected_command_count": 144,
   "forbidden": {
     "sweep_mode": true,
     "non_winner_orthoadapt_configs": true,

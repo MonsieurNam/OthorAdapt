@@ -27,7 +27,7 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 
 ### 1.4 DoRA Inclusion
 - **Decision:** Skip DoRA implementation; add to Limitations.
-- **Rationale:** SingLoRA will be used as the matched same-family symmetric baseline; DoRA will be discussed conceptually and listed as a limitation because a matched implementation in the custom CLIP attention path is not available within the revision window.
+- **Rationale:** DoRA will be discussed conceptually and listed as a limitation because a matched implementation in the custom CLIP attention path is not available within the revision window. The main empirical baseline remains CLIP-LoRA, which is public, citable, and directly matched to the few-shot CLIP setting.
 - **Date / Decided by:** 2026-06-16 / HN Tran
 - **Impact:** Reframe the response letter to address DoRA via literature comparison rather than direct empirical comparison.
 
@@ -42,6 +42,12 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 - **Rationale:** Directly addresses R2's credibility concern during the review phase.
 - **Date / Decided by:** 2026-06-16 / HN Tran
 - **Impact:** Release will include cleaned scripts, exact configs, seed list, split hashes, environment file, result manifests, aggregation/statistical scripts, and instructions to reproduce all tables/figures. Adapter checkpoints will be released if storage and licensing constraints permit; otherwise scripts and manifests will be sufficient to reproduce them.
+
+### 1.7 SingLoRA-CLIP Baseline Inclusion
+- **Decision:** Exclude SingLoRA-CLIP from the Tier-A Phase 3 main matrix. Phase 3 will compare CLIP-LoRA and OrthoAdapt only: 8 datasets x 3 shots x 3 seeds x 2 methods = 144 runs.
+- **Rationale:** The citable SingLoRA work is a general PEFT preprint, while the SingLoRA-CLIP variant in this repository is an internal unpublished CLIP adaptation still under investigation. Including it as a main reviewer-facing baseline would mix a non-public, unstable research variant into the acceptance-critical table and could reduce reproducibility. CLIP-LoRA is the appropriate direct baseline because it is a public few-shot VLM/CLIP method and explicitly positions itself as a strong baseline for evaluating progress in few-shot VLM adaptation.
+- **Date / Decided by:** 2026-06-18 / HN Tran
+- **Impact:** Update `phase3_main_protocol.yaml`, `phase3_main_commands.sh`, and server instructions to 144 runs. Mention SingLoRA-CLIP only as internal exploratory/future work unless it is separately published with stable code, protocol, and citations.
 
 
 ## 2. Administrative / Publishing Decisions
