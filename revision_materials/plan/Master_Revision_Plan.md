@@ -175,15 +175,15 @@ Author decisions must be recorded before running experiments that depend on them
 
 **Required outputs:**
 - [x] `selection_protocol.yaml`. **Frozen in `revision_materials/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
-- [ ] `validation_sweep_results.jsonl`. **Pending server run; generated commands target `revision_materials/results/validation_sweep_results.jsonl`.**
-- [ ] `selected_config.md`. **Selector and dry-run are implemented; real file must be generated only after all server validation rows are present.**
+- [x] `validation_sweep_results.jsonl`. **Server run completed with 121 raw rows: 120 protocol-valid validation rows plus one preserved pre-sweep manual row outside the frozen grid. Protocol-only manifest is `revision_materials/results/validation_sweep_results_protocol.jsonl`; audit is `revision_materials/results/validation_sweep_protocol_audit.md`.**
+- [x] `selected_config.md`. **Generated from the 120-row protocol-only manifest after fail-closed selector rejected the raw manifest's out-of-protocol row. Winner: `num_heads=2`, `r=4`, `lambda_o=0.0`, mean validation accuracy `91.541667`.**
 
 **Tasks:**
 - [x] Freeze validation aggregate and rationale before running sweeps. **Protocol selects by unweighted mean validation accuracy over EuroSAT and Caltech101, 4-shot, seeds {1,2,3}; candidate grid and tie-breaks match `Author_Decisions.md`.**
-- [x] Sweep only validation data. **`phase2_validation_sweep.py generate` produced 240 commands in `revision_materials/scripts/validation_sweep_commands.sh`; every command uses `--selection_split val` and `--sweep_mode`, with no `--report_test`.**
-- [x] Record all candidates in JSONL. **Command generator writes every candidate to `revision_materials/results/validation_sweep_results.jsonl`; actual rows remain pending server execution.**
-- [x] Select winner by frozen rule only. **Implemented in `phase2_validation_sweep.py select`; selector fails closed on non-validation rows, out-of-grid rows, and incomplete candidate coverage. Dry-run output: `revision_materials/results/selected_config_dry_run.md`.**
-- [ ] Hash and freeze `selected_config.md`. **Pending real server manifest; dry-run hash sidecar exists only for `selected_config_dry_run.md`.**
+- [x] Sweep only validation data. **`phase2_validation_sweep.py generate` produced 120 commands in `revision_materials/scripts/validation_sweep_commands.sh`; every command uses `--selection_split val` and `--sweep_mode`, with no `--report_test`.**
+- [x] Record all candidates in JSONL. **Server manifest contains all 120 frozen candidate rows exactly once; the raw manifest also preserves one accidental pre-sweep manual row for auditability.**
+- [x] Select winner by frozen rule only. **Selector failed closed on the raw 121-row manifest, then succeeded on `validation_sweep_results_protocol.jsonl` after excluding the documented out-of-protocol row. Output: `revision_materials/results/selected_config.md`.**
+- [x] Hash and freeze `selected_config.md`. **SHA256 sidecar exists at `revision_materials/results/selected_config.md.sha256`.**
 - [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` explicitly blocks Phase 3 until `selected_config.md` exists.**
 
 ---
@@ -196,6 +196,7 @@ Author decisions must be recorded before running experiments that depend on them
 - `main_results_manifest.jsonl`
 - `statistical_report.md`
 - `generated_tables.tex`
+- [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. The script contains 216 test-set commands: 8 datasets x 3 shots x 3 methods x 3 seeds.**
 
 **Minimum Tier A tasks:**
 - [ ] Run CLIP-LoRA, SingLoRA, and OrthoAdapt.

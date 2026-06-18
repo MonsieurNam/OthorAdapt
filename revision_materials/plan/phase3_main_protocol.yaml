@@ -1,0 +1,84 @@
+{
+  "schema_version": "phase3.main.v1",
+  "status": "FROZEN_AFTER_PHASE2_SELECTION",
+  "selected_config_source": {
+    "selected_config": "revision_materials/results/selected_config.md",
+    "selected_config_sha256": "revision_materials/results/selected_config.md.sha256",
+    "validation_manifest": "revision_materials/results/validation_sweep_results_protocol.jsonl",
+    "validation_audit": "revision_materials/results/validation_sweep_protocol_audit.md"
+  },
+  "rationale": "Phase 3 evaluates the final selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. Baselines are run with the same selected rank budget for paired seed-level comparisons.",
+  "datasets": [
+    "fgvc",
+    "eurosat",
+    "food101",
+    "oxford_pets",
+    "oxford_flowers",
+    "caltech101",
+    "dtd",
+    "ucf101"
+  ],
+  "shots": [
+    1,
+    4,
+    16
+  ],
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "methods": [
+    {
+      "adapter": "lora",
+      "r": 4,
+      "alpha": 1,
+      "num_heads": 2,
+      "lambda_o": 0.0
+    },
+    {
+      "adapter": "singlora",
+      "r": 4,
+      "alpha": 1,
+      "num_heads": 2,
+      "lambda_o": 0.0
+    },
+    {
+      "adapter": "ohsinglora",
+      "r": 4,
+      "alpha": 1,
+      "num_heads": 2,
+      "lambda_o": 0.0
+    }
+  ],
+  "base_command": {
+    "python": "$PYTHON",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "run_manifest": "revision_materials/results/phase3_main_results.jsonl",
+    "save_path": "revision_materials/checkpoints/phase3_main",
+    "log_dir": "revision_materials/logs/phase3_main",
+    "backbone": "ViT-B/16",
+    "encoder": "both",
+    "position": "all",
+    "params": [
+      "q",
+      "k",
+      "v"
+    ],
+    "n_iters": 500,
+    "batch_size": 32,
+    "loss_fn": "ce",
+    "ortho_reduction": "mean"
+  },
+  "expected_command_count": 216,
+  "forbidden": {
+    "sweep_mode": true,
+    "non_winner_orthoadapt_configs": true,
+    "validation_split_as_final_metric": true
+  },
+  "expected_outputs_after_server_run": {
+    "manifest": "revision_materials/results/phase3_main_results.jsonl",
+    "aggregate_csv": "revision_materials/results/phase3_main_summary.csv"
+  }
+}
