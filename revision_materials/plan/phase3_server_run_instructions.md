@@ -69,6 +69,26 @@ manually if you want a custom log suffix:
 export RUN_STAMP=$(date +%Y%m%d_%H%M%S)
 ```
 
+Optional tmux watchdog setup:
+
+```bash
+cd /root/OthorAdapt
+
+tmux new-session -d -s run_ablation
+tmux send-keys -t run_ablation 'cd /root/OthorAdapt' C-m
+tmux send-keys -t run_ablation 'export DATA_ROOT=/root/DATA' C-m
+tmux send-keys -t run_ablation 'export PYTHON=/opt/conda/bin/python' C-m
+tmux send-keys -t run_ablation '$PYTHON revision_materials/scripts/phase3_resumable_runner.py 2>&1 | tee revision_materials/logs/phase3_runner_$(date +%Y%m%d_%H%M%S).log' C-m
+
+tmux new-session -d -s checker
+tmux send-keys -t checker 'cd /root/OthorAdapt && bash revision_materials/scripts/phase3_checker_loop.sh' C-m
+
+sleep 12
+echo "=== tmux sessions ==="; tmux ls
+echo "=== run_ablation (tail) ==="; tmux capture-pane -t run_ablation -p 2>&1 | grep -vE '^$' | tail -4
+echo "=== phase3 train procs ==="; ps -eo args | grep -E 'python[0-9.]* +main\.py' | grep phase3_main | grep -v grep | wc -l
+```
+
 No command may include:
 
 - `--sweep_mode`

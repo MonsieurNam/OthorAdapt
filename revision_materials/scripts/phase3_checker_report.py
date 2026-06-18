@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Print one-line JSON progress for the Phase 3 main matrix.
+
+ETA is always iteration-based: Phase 3 mixes 1/4/16-shot runs whose cost scales
+with n_iters * shots (1-shot=500 iters, 16-shot=8000 iters). A flat mean
+runtime/run would badly underestimate the remaining time once the easy 1-shot
+runs finish first, so we estimate seconds-per-iteration from completed runs
+(Phase 3 first, validation sweep as fallback) and multiply by the total pending
+iterations.
+"""
+
+import json
+import os
+import sys
+from pathlib import Path
+
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import phase3_resumable_runner as runner  # noqa: E402
+
+
+def build_report(cost_per_hour_vnd=5000):
+    commands = runner.load_phase3_commands(runner.DEFAULT_COMMANDS)
+    completed, runtimes = runner.completed_filenames(runner.DEFAULT_MANIFEST)
+    pending = [c for c in commands if runner.extract_filename(c) not in completed]
+    done = len(commands) - len(pending)
+
+    # Seconds per iteration from completed rows (Phase 3 manifest first, then the
+    # validation sweep protocol manifest). Both expose runtime + iterations.
+    seconds_per_iter = runner.seconds_per_iteration(
+        [str(runner.DEFAULT_MANIFEST), str(runner.DEFAULT_RUNTIME_SOURCE)]
+    )
+    pending_iterations = sum(runner.command_iterations(c) or 0 for c in pending)
+
+    if seconds_per_iter is not None and pending_iterations > 0:
+        eta_seconds = seconds_per_iter * pending_iterations
+        rate = f"{seconds_per_iter:.4f}s/iter"
+    elif runtimes:
+        # Last-resort fallback if iteration metadata is missing: flat mean/run.
+        mean_runtime = sum(runtimes) / len(runtimes)
+        eta_seconds = mean_runtime * len(pending)
+        rate = f"{runner.format_duration(mean_runtime)}/run (flat)"
+    else:
+        eta_seconds = 0
+        rate = "unknown"
+
+    eta_hours = eta_seconds / 3600.0
+    return {
+        "done": done,
+        "total": len(commands),
+        "pending": len(pending),
+        "pending_iterations": pending_iterations,
+        "eta_seconds": int(eta_seconds),
+        "eta_human": runner.format_duration(eta_seconds),
+        "eta_hours": round(eta_hours, 1),
+        "cost_remaining_vnd": int(round(eta_hours) * cost_per_hour_vnd),
+        "rate": rate,
+    }
+
+
+def main():
+    cost = int(os.environ.get("COST_PER_HOUR_VND", "5000"))
+    print(json.dumps(build_report(cost), sort_keys=True))
+
+
+if __name__ == "__main__":
+    main()
