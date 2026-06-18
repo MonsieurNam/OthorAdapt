@@ -23,13 +23,36 @@ The generated commands are:
 revision_materials/scripts/phase3_main_commands.sh
 ```
 
+The resume-safe runner is:
+
+```text
+revision_materials/scripts/phase3_resumable_runner.py
+```
+
 Expected command count: 144.
 
-## 2. Run Main Matrix
+## 2. Estimate And Run Main Matrix
+
+First, check pending work and ETA without launching training:
 
 ```bash
-bash revision_materials/scripts/phase3_main_commands.sh
+$PYTHON revision_materials/scripts/phase3_resumable_runner.py --dry-run
 ```
+
+The runner estimates time from completed Phase 3 rows when available. Before any
+Phase 3 row exists, it falls back to `validation_sweep_results_protocol.jsonl`
+and scales by the expected training iterations in each command.
+
+Run the matrix through the resume-safe runner:
+
+```bash
+$PYTHON revision_materials/scripts/phase3_resumable_runner.py
+```
+
+If the server is interrupted, rerun the same command. Completed runs are skipped
+only when the manifest row has `status=completed`, `config.filename`, and a
+non-empty checkpoint SHA256. A run interrupted before writing a completed
+manifest row will be rerun from scratch.
 
 Every command must include:
 
@@ -38,6 +61,13 @@ Every command must include:
 - `--run_manifest revision_materials/results/phase3_main_results.jsonl`
 - `$PYTHON` as the interpreter, defaulting to `python3`
 - `2>&1 | tee revision_materials/logs/phase3_main/<run>_${RUN_STAMP}.log`
+
+The runner sets `RUN_STAMP` for the session if it is not already present. Set it
+manually if you want a custom log suffix:
+
+```bash
+export RUN_STAMP=$(date +%Y%m%d_%H%M%S)
+```
 
 No command may include:
 
