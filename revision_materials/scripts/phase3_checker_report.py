@@ -12,6 +12,7 @@ iterations.
 import json
 import os
 import sys
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -19,7 +20,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import phase3_resumable_runner as runner  # noqa: E402
 
 
-def build_report(cost_per_hour_vnd=5000):
+VN_TZ = timezone(timedelta(hours=7))
+
+
+def format_finish_time(dt):
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def build_report(cost_per_hour_vnd=5000, now=None):
+    if now is None:
+        now = datetime.now(timezone.utc)
+    elif now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+    else:
+        now = now.astimezone(timezone.utc)
+
     commands = runner.load_phase3_commands(runner.DEFAULT_COMMANDS)
     completed, runtimes = runner.completed_filenames(runner.DEFAULT_MANIFEST)
     pending = [c for c in commands if runner.extract_filename(c) not in completed]
@@ -44,16 +59,21 @@ def build_report(cost_per_hour_vnd=5000):
         eta_seconds = 0
         rate = "unknown"
 
-    eta_hours = eta_seconds / 3600.0
+    eta_seconds_int = int(round(eta_seconds))
+    eta_hours = eta_seconds_int / 3600.0
+    finish_utc = now + timedelta(seconds=eta_seconds_int)
+    finish_vn = finish_utc.astimezone(VN_TZ)
     return {
         "done": done,
         "total": len(commands),
         "pending": len(pending),
         "pending_iterations": pending_iterations,
-        "eta_seconds": int(eta_seconds),
-        "eta_human": runner.format_duration(eta_seconds),
+        "eta_seconds": eta_seconds_int,
+        "eta_human": runner.format_duration(eta_seconds_int),
         "eta_hours": round(eta_hours, 1),
         "cost_remaining_vnd": int(round(eta_hours) * cost_per_hour_vnd),
+        "estimated_finish_utc": f"{format_finish_time(finish_utc)} UTC",
+        "estimated_finish_vn": f"{format_finish_time(finish_vn)} VN",
         "rate": rate,
     }
 

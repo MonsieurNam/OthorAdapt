@@ -1,6 +1,7 @@
 import json
 import tempfile
 import unittest
+from datetime import datetime, timezone
 from pathlib import Path
 
 from revision_materials.scripts import phase3_checker_report as report
@@ -51,7 +52,10 @@ class Phase3CheckerReportTest(unittest.TestCase):
                 report.runner.DEFAULT_MANIFEST = manifest
                 report.runner.DEFAULT_RUNTIME_SOURCE = runtime_source
 
-                data = report.build_report(cost_per_hour_vnd=5000)
+                data = report.build_report(
+                    cost_per_hour_vnd=5000,
+                    now=datetime(2026, 6, 18, 0, 0, tzinfo=timezone.utc),
+                )
             finally:
                 report.runner.DEFAULT_COMMANDS = old_commands
                 report.runner.DEFAULT_MANIFEST = old_manifest
@@ -62,6 +66,10 @@ class Phase3CheckerReportTest(unittest.TestCase):
         self.assertEqual(data["pending"], 1)
         self.assertEqual(data["rate"], "1.0050s/iter")
         self.assertEqual(data["pending_iterations"], 2000)
+        self.assertEqual(data["eta_seconds"], 2010)
+        self.assertEqual(data["eta_human"], "33m30s")
+        self.assertEqual(data["estimated_finish_utc"], "2026-06-18 00:33 UTC")
+        self.assertEqual(data["estimated_finish_vn"], "2026-06-18 07:33 VN")
         self.assertEqual(data["cost_remaining_vnd"], 5000)
 
 

@@ -96,6 +96,7 @@ if data:
     print("- Pending: {} runs".format(data["pending"]))
     print("- Rate: {}".format(data["rate"]))
     print("- Estimated remaining time: {} (~{}h)".format(data["eta_human"], data["eta_hours"]))
+    print("- Estimated finish: {} ({})".format(data.get("estimated_finish_vn", "?"), data.get("estimated_finish_utc", "?")))
     print("- Estimated remaining cost: {:,} VND".format(cost_remaining))
 else:
     print("- Report unavailable")
