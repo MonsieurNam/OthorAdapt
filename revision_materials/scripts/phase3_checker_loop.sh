@@ -17,6 +17,8 @@ NOTE_EVERY=${NOTE_EVERY:-2}                              # note every 2 cycles =
 case "$NOTE_EVERY" in ''|*[!0-9]*) NOTE_EVERY=1 ;; esac  # must be a positive int
 [ "$NOTE_EVERY" -lt 1 ] && NOTE_EVERY=1                  # guard div-by-zero in modulo
 COST_PER_HOUR_VND=${COST_PER_HOUR_VND:-5000}
+CHECKER_LOCK_DIR=${CHECKER_LOCK_DIR:-/root/OthorAdapt/revision_materials/logs/phase3_checker_loop.lock}
+GDRIVE_BACKUP_STATUS_FILE=${GDRIVE_BACKUP_STATUS_FILE:-/root/OthorAdapt/revision_materials/logs/phase3_gdrive_backup_status.env}
 
 cd "$PROJECT_ROOT"
 export DATA_ROOT
@@ -30,6 +32,27 @@ mkdir -p "$(dirname "$NOTE")"
 if [ ! -f "$NOTE" ]; then
   echo "# Phase 3 progress notes (check every 30min, note every 1h)" > "$NOTE"
 fi
+
+acquire_checker_lock() {
+  mkdir -p "$(dirname "$CHECKER_LOCK_DIR")"
+  if mkdir "$CHECKER_LOCK_DIR" 2>/dev/null; then
+    printf '%s\n' "$$" > "${CHECKER_LOCK_DIR}/pid"
+    trap 'rm -rf "$CHECKER_LOCK_DIR"' EXIT INT TERM
+    return 0
+  fi
+
+  old_pid=$(cat "${CHECKER_LOCK_DIR}/pid" 2>/dev/null || true)
+  if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+    echo "Phase 3 checker already running (pid=$old_pid); exiting."
+    exit 0
+  fi
+
+  echo "Removing stale checker lock: $CHECKER_LOCK_DIR"
+  rm -rf "$CHECKER_LOCK_DIR"
+  mkdir "$CHECKER_LOCK_DIR"
+  printf '%s\n' "$$" > "${CHECKER_LOCK_DIR}/pid"
+  trap 'rm -rf "$CHECKER_LOCK_DIR"' EXIT INT TERM
+}
 
 # Local VN time without tzdata (server lacks /usr/share/zoneinfo). Prefer GNU
 # `date -d`; fall back to epoch arithmetic on a minimal image lacking it.
@@ -48,6 +71,46 @@ phase3_active_process_count() {
     | grep -E 'phase3_main|phase3_resumable_runner|phase3_main_commands' \
     | grep -v -E 'grep|phase3_checker_loop|phase3_checker_report' \
     | wc -l
+}
+
+gdrive_backup_process_count() {
+  ps -eo args \
+    | grep -E 'bash .*phase3_backup_to_gdrive\.sh|phase3_backup_to_gdrive\.sh +(loop|once)' \
+    | grep -v -E 'grep|phase3_checker_loop|phase3_checker_report' \
+    | wc -l
+}
+
+status_value() {
+  key="$1"
+  file="$2"
+  awk -F= -v wanted="$key" '$1 == wanted {sub(/^[^=]*=/, ""); print; exit}' "$file" 2>/dev/null
+}
+
+write_gdrive_backup_note() {
+  active_count=$(gdrive_backup_process_count)
+  active_state="inactive"
+  [ "${active_count:-0}" -gt 0 ] && active_state="active (${active_count} process(es))"
+
+  if [ ! -f "$GDRIVE_BACKUP_STATUS_FILE" ]; then
+    echo "- Google Drive backup: ${active_state}; no status file yet (${GDRIVE_BACKUP_STATUS_FILE})"
+    return 0
+  fi
+
+  backup_status=$(status_value STATUS "$GDRIVE_BACKUP_STATUS_FILE")
+  backup_time=$(status_value TIMESTAMP_UTC "$GDRIVE_BACKUP_STATUS_FILE")
+  backup_message=$(status_value MESSAGE "$GDRIVE_BACKUP_STATUS_FILE")
+  backup_archive=$(status_value ARCHIVE "$GDRIVE_BACKUP_STATUS_FILE")
+  backup_dest=$(status_value DESTINATION "$GDRIVE_BACKUP_STATUS_FILE")
+
+  [ -n "$backup_status" ] || backup_status="unknown"
+  [ -n "$backup_time" ] || backup_time="unknown time"
+  [ -n "$backup_message" ] || backup_message="no message"
+  [ -n "$backup_dest" ] || backup_dest="unknown destination"
+
+  echo "- Google Drive backup: ${active_state}; last_status=${backup_status}; last_update=${backup_time}; message=${backup_message}; destination=${backup_dest}"
+  if [ -n "$backup_archive" ]; then
+    echo "- Google Drive backup archive: ${backup_archive}"
+  fi
 }
 
 pending_count() {
@@ -101,8 +164,11 @@ if data:
 else:
     print("- Report unavailable")
 '
+    write_gdrive_backup_note
   } >> "$NOTE"
 }
+
+acquire_checker_lock
 
 tick=0
 while true; do

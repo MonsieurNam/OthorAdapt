@@ -182,36 +182,38 @@ def run_pending_commands(
         print(message, file=out, flush=True)
 
     write(f"Phase 3 resume: completed={completed_before}/{total}, pending={len(pending)}")
-    if historical_runtimes:
-        mean_runtime = sum(historical_runtimes) / len(historical_runtimes)
-        write(
-            "Historical mean runtime/run="
-            f"{format_duration(mean_runtime)}; ETA for pending={format_duration(mean_runtime * len(pending))}"
-        )
-    elif historical_seconds_per_iteration is not None:
+    # Prefer iteration-based ETA: Phase 3 mixes 1/4/16-shot runs whose cost scales
+    # with n_iters * shots, so a flat mean runtime/run badly underestimates the
+    # remaining time once the cheap 1-shot runs finish first. Fall back to flat
+    # mean only when iteration metadata is unavailable.
+    if historical_seconds_per_iteration is not None:
         pending_iterations = sum(command_iterations(command) or 0 for _, command in pending)
         write(
             "Historical mean seconds/iteration="
             f"{historical_seconds_per_iteration:.6f}; ETA for pending="
             f"{format_duration(historical_seconds_per_iteration * pending_iterations)}"
         )
+    elif historical_runtimes:
+        mean_runtime = sum(historical_runtimes) / len(historical_runtimes)
+        write(
+            "Historical mean runtime/run (flat fallback)="
+            f"{format_duration(mean_runtime)}; ETA for pending={format_duration(mean_runtime * len(pending))}"
+        )
     else:
-        write("Historical mean runtime/run=unknown; ETA unavailable until one run completes")
+        write("Historical ETA unavailable until one run completes")
 
     executed = 0
     observed_runtimes = []
     for index, (filename, command) in enumerate(pending[:run_limit], start=1):
-        elapsed_samples = historical_runtimes + observed_runtimes
-        mean_runtime = (sum(elapsed_samples) / len(elapsed_samples)) if elapsed_samples else None
-        if mean_runtime:
-            eta = format_duration(mean_runtime * (len(pending) - index + 1))
-        elif historical_seconds_per_iteration is not None:
-            remaining_iterations = sum(
-                command_iterations(command) or 0 for _, command in pending[index - 1 :]
-            )
+        remaining_iterations = sum(
+            command_iterations(command) or 0 for _, command in pending[index - 1 :]
+        )
+        if historical_seconds_per_iteration is not None and remaining_iterations > 0:
             eta = format_duration(historical_seconds_per_iteration * remaining_iterations)
         else:
-            eta = "unknown"
+            elapsed_samples = historical_runtimes + observed_runtimes
+            mean_runtime = (sum(elapsed_samples) / len(elapsed_samples)) if elapsed_samples else None
+            eta = format_duration(mean_runtime * (len(pending) - index + 1)) if mean_runtime else "unknown"
         write(f"[{completed_before + index}/{total}] {filename} ETA={eta}")
 
         if dry_run:
