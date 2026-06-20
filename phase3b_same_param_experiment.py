@@ -1,12 +1,18 @@
-"""Generate Phase 3 main-matrix commands from the frozen selected config."""
+"""Generate Phase 3B same-parameter commands for the legacy claim check."""
 
 import argparse
 import json
 from pathlib import Path
 
 
-PROTOCOL_SCHEMA_VERSION = "phase3.main.v1"
-SELECTED_ORTHOADAPT = {"adapter": "ohsinglora", "num_heads": 2, "r": 4, "lambda_o": 0.0}
+PROTOCOL_SCHEMA_VERSION = "phase3b.same_param.v1"
+EXPECTED_LORA = {"adapter": "lora", "r": 2}
+EXPECTED_ORTHOADAPT = {
+    "adapter": "ohsinglora",
+    "num_heads": 2,
+    "r": 2,
+    "lambda_o": 0.03,
+}
 
 
 def load_protocol(path):
@@ -15,7 +21,7 @@ def load_protocol(path):
         return json.loads(text)
     except json.JSONDecodeError as exc:
         raise ValueError(
-            "Phase 3 protocol must be JSON-compatible YAML/JSON; avoid comments"
+            "Phase 3B protocol must be JSON-compatible YAML/JSON; avoid comments"
         ) from exc
 
 
@@ -41,6 +47,15 @@ def _require_list(protocol, key):
     return value
 
 
+def _assert_method(method, expected, label):
+    for key, value in expected.items():
+        if method.get(key) != value:
+            raise ValueError(
+                f"Phase 3B {label} config mismatch for {key}: "
+                f"expected {value}, got {method.get(key)}"
+            )
+
+
 def validate_protocol(protocol):
     if protocol.get("schema_version") != PROTOCOL_SCHEMA_VERSION:
         raise ValueError(f"schema_version must be {PROTOCOL_SCHEMA_VERSION}")
@@ -54,16 +69,14 @@ def validate_protocol(protocol):
         if not base.get(field):
             raise ValueError(f"base_command.{field} is required")
 
+    lora_methods = [method for method in methods if method.get("adapter") == "lora"]
     ortho_methods = [method for method in methods if method.get("adapter") == "ohsinglora"]
+    if len(lora_methods) != 1:
+        raise ValueError("Phase 3B must include exactly one CLIP-LoRA method")
     if len(ortho_methods) != 1:
-        raise ValueError("Phase 3 must include exactly one selected OrthoAdapt method")
-    selected = ortho_methods[0]
-    for key, value in SELECTED_ORTHOADAPT.items():
-        if selected.get(key) != value:
-            raise ValueError(
-                f"Phase 3 selected OrthoAdapt config mismatch for {key}: "
-                f"expected {value}, got {selected.get(key)}"
-            )
+        raise ValueError("Phase 3B must include exactly one OrthoAdapt method")
+    _assert_method(lora_methods[0], EXPECTED_LORA, "CLIP-LoRA")
+    _assert_method(ortho_methods[0], EXPECTED_ORTHOADAPT, "OrthoAdapt")
 
 
 def _base_flags(base):
@@ -93,7 +106,7 @@ def _run_name(dataset, shot, seed, method):
     return f"{dataset}_{int(shot)}shot_seed{int(seed)}_test_{adapter}_r{int(method['r'])}"
 
 
-def generate_main_commands(protocol):
+def generate_phase3b_commands(protocol):
     validate_protocol(protocol)
     base = protocol["base_command"]
     base_flags = _base_flags(base)
@@ -149,14 +162,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    generate = subparsers.add_parser("generate", help="Generate Phase 3 bash commands")
+    generate = subparsers.add_parser("generate", help="Generate Phase 3B bash commands")
     generate.add_argument("--protocol", required=True)
     generate.add_argument("--out", required=True)
 
     args = parser.parse_args(argv)
     if args.command == "generate":
         protocol = load_protocol(args.protocol)
-        write_commands(generate_main_commands(protocol), args.out)
+        write_commands(generate_phase3b_commands(protocol), args.out)
 
 
 if __name__ == "__main__":

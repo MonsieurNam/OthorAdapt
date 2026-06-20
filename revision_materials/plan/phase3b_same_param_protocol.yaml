@@ -1,0 +1,69 @@
+{
+  "schema_version": "phase3b.same_param.v1",
+  "status": "FROZEN_LEGACY_SAME_PARAMETER_CHECK",
+  "rationale": "Phase 3B directly tests the strongest legacy claim under a transparent paired protocol: CLIP-LoRA r=2 versus OrthoAdapt/OH-SingLoRA H=2,r=2 at the same 184,320 trainable-parameter budget. This is a diagnostic same-parameter check and does not replace the validation-selected Phase 3 main matrix.",
+  "legacy_claim_source": {
+    "workbook": "data/clip_fewshot_results.xlsx",
+    "legacy_clip_lora": "CLIP-LoRA, r=2, 184320 trainable parameters",
+    "legacy_orthoadapt": "CLIP-ohsingloRA_r2_numheads_2, H=2, r=2, 184320 trainable parameters"
+  },
+  "datasets": [
+    "fgvc",
+    "eurosat",
+    "food101",
+    "oxford_pets",
+    "oxford_flowers",
+    "caltech101",
+    "dtd",
+    "ucf101"
+  ],
+  "shots": [
+    1,
+    4,
+    16
+  ],
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "methods": [
+    {
+      "adapter": "lora",
+      "r": 2,
+      "alpha": 1
+    },
+    {
+      "adapter": "ohsinglora",
+      "r": 2,
+      "alpha": 1,
+      "num_heads": 2,
+      "lambda_o": 0.03
+    }
+  ],
+  "base_command": {
+    "python": "$PYTHON",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "run_manifest": "revision_materials/results/phase3b_same_param_results.jsonl",
+    "save_path": "revision_materials/checkpoints/phase3b_same_param",
+    "log_dir": "revision_materials/logs/phase3b_same_param",
+    "backbone": "ViT-B/16",
+    "encoder": "both",
+    "position": "all",
+    "params": [
+      "q",
+      "k",
+      "v"
+    ],
+    "n_iters": 500,
+    "batch_size": 32,
+    "loss_fn": "ce",
+    "ortho_reduction": "mean"
+  },
+  "expected_command_count": 144,
+  "expected_outputs_after_server_run": {
+    "manifest": "revision_materials/results/phase3b_same_param_results.jsonl",
+    "aggregate_csv": "revision_materials/results/phase3b_same_param_summary.csv"
+  }
+}
