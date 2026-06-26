@@ -38,16 +38,17 @@
       "r": 2,
       "alpha": 1,
       "num_heads": 2,
-      "lambda_o": 0.03
+      "lambda_o": 0.03,
+      "ramp_up_steps": 100
     }
   ],
   "base_command": {
     "python": "$PYTHON",
     "entrypoint": "main.py",
     "root_path": "${DATA_ROOT}",
-    "run_manifest": "revision_materials/results/phase3b_same_param_results.jsonl",
-    "save_path": "revision_materials/checkpoints/phase3b_same_param",
-    "log_dir": "revision_materials/logs/phase3b_same_param",
+    "run_manifest": "revision_materials/results/phase3b_same_param_ramp100_results.jsonl",
+    "save_path": "revision_materials/checkpoints/phase3b_same_param_ramp100",
+    "log_dir": "revision_materials/logs/phase3b_same_param_ramp100",
     "backbone": "ViT-B/16",
     "encoder": "both",
     "position": "all",
@@ -63,7 +64,7 @@
   },
   "expected_command_count": 144,
   "expected_outputs_after_server_run": {
-    "manifest": "revision_materials/results/phase3b_same_param_results.jsonl",
-    "aggregate_csv": "revision_materials/results/phase3b_same_param_summary.csv"
+    "manifest": "revision_materials/results/phase3b_same_param_ramp100_results.jsonl",
+    "aggregate_csv": "revision_materials/results/phase3b_same_param_ramp100_summary.csv"
   }
 }

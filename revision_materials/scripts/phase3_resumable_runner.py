@@ -13,8 +13,8 @@ from pathlib import Path
 
 
 DEFAULT_COMMANDS = Path("revision_materials/scripts/phase3_main_commands.sh")
-DEFAULT_MANIFEST = Path("revision_materials/results/phase3_main_results.jsonl")
-DEFAULT_RUNTIME_SOURCE = Path("revision_materials/results/validation_sweep_results_protocol.jsonl")
+DEFAULT_MANIFEST = Path("revision_materials/results/phase3_main_ramp100_results.jsonl")
+DEFAULT_RUNTIME_SOURCE = Path("revision_materials/results/validation_sweep_ramp100_results.jsonl")
 FILENAME_RE = re.compile(r"(?:^|\s)--filename\s+(\"[^\"]+\"|'[^']+'|\S+)")
 
 

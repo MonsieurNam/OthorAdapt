@@ -34,7 +34,7 @@ def validate_protocol(protocol):
         if not grid.get(field):
             raise ValueError(f"candidate_grid.{field} is required")
     base = protocol.get("base_command", {})
-    for field in ("python", "entrypoint", "run_manifest", "save_path", "adapter"):
+    for field in ("python", "entrypoint", "run_manifest", "save_path", "adapter", "ramp_up_steps"):
         if not base.get(field):
             raise ValueError(f"base_command.{field} is required")
     if "require_all_candidates" not in protocol:
@@ -102,6 +102,7 @@ def generate_sweep_commands(protocol):
                         f"{dataset}_{int(shot)}shot_seed{int(seed)}_val_{base['adapter']}"
                         f"_h{candidate['num_heads']}_r{candidate['r']}"
                         f"_lo{_lambda_tag(candidate['lambda_o'])}"
+                        f"_ramp{int(base['ramp_up_steps'])}"
                     )
                     flags = [
                         f"--dataset {_quote(dataset)}",

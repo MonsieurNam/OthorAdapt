@@ -7,7 +7,7 @@ import phase3_resumable_runner as runner
 
 
 DEFAULT_COMMANDS = "revision_materials/scripts/phase3b_same_param_commands.sh"
-DEFAULT_MANIFEST = "revision_materials/results/phase3b_same_param_results.jsonl"
+DEFAULT_MANIFEST = "revision_materials/results/phase3b_same_param_ramp100_results.jsonl"
 
 
 def main(argv=None):

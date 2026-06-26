@@ -40,9 +40,10 @@ Every command must include:
 
 - `--selection_split val`
 - `--sweep_mode`
-- `--run_manifest revision_materials/results/validation_sweep_results.jsonl`
+- `--run_manifest revision_materials/results/validation_sweep_ramp100_results.jsonl`
+- `--ramp_up_steps 100`
 - `$PYTHON` as the interpreter, defaulting to `python3`
-- `2>&1 | tee revision_materials/logs/validation_sweep/<run>_${RUN_STAMP}.log` so stdout and stderr are saved per run without overwriting logs from a later rerun
+- `2>&1 | tee revision_materials/logs/validation_sweep_ramp100/<run>_${RUN_STAMP}.log` so stdout and stderr are saved per run without overwriting logs from a later rerun
 
 No command may include `--report_test`.
 
@@ -51,18 +52,18 @@ No command may include `--report_test`.
 After all 120 validation rows are present:
 
 ```bash
-python phase2_validation_sweep.py select \
+$PYTHON phase2_validation_sweep.py select \
   --protocol revision_materials/plan/selection_protocol.yaml \
-  --manifest revision_materials/results/validation_sweep_results.jsonl \
-  --out revision_materials/results/selected_config.md
+  --manifest revision_materials/results/validation_sweep_ramp100_results.jsonl \
+  --out revision_materials/results/selected_config_ramp100.md
 ```
 
 The selector requires complete coverage for every pre-registered candidate. It will fail closed if a candidate is missing, if any row uses a non-validation split, or if a row is outside the frozen candidate grid.
 
 Expected outputs:
 
-- `revision_materials/results/validation_sweep_results.jsonl`
-- `revision_materials/results/selected_config.md`
-- `revision_materials/results/selected_config.md.sha256`
+- `revision_materials/results/validation_sweep_ramp100_results.jsonl`
+- `revision_materials/results/selected_config_ramp100.md`
+- `revision_materials/results/selected_config_ramp100.md.sha256`
 
-Do not start Phase 3 test-set evaluation until `selected_config.md` and its SHA256 sidecar exist.
+Do not start Phase 3 test-set evaluation until `selected_config_ramp100.md` and its SHA256 sidecar exist. If the ramp100 winner differs from the Phase 3 protocol, update and regenerate `phase3_main_commands.sh` before any test-set run.

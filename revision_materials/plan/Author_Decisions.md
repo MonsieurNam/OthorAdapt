@@ -7,7 +7,7 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 ### 1.1 Validation Rule For Hyperparameter Selection
 - **Decision:** Selection metric is the unweighted mean validation accuracy across EuroSAT and Caltech101, averaged over seeds {1,2,3} when feasible; if only one validation seed is used for compute reasons, this will be explicitly documented as a limitation.
 - **Candidates:** Executed frozen sweep uses `H` in {2,4}, `r` in {2,4,8} where divisible by H, and `lambda_o` in {0, 0.01, 0.03, 0.05}; this yields 20 candidate configurations and 120 validation runs across EuroSAT/Caltech101, 4-shot, seeds {1,2,3}.
-- **Selected configuration:** `H=2`, `r=4`, `lambda_o=0.0`, selected by the frozen validation rule in `revision_materials/results/selected_config.md`.
+- **Selected configuration:** The previous frozen selection was `H=2`, `r=4`, `lambda_o=0.0` in `revision_materials/results/selected_config.md`, but it was produced before the ramp schedule mismatch was found. For the revised evidence package, selection must be re-frozen from `revision_materials/results/validation_sweep_ramp100_results.jsonl` into `revision_materials/results/selected_config_ramp100.md` before any new Phase 3 test-set evaluation.
 - **Tie-break rule:** Ties will be broken by lower parameter count, then lower `lambda_o`.
 - **Rationale:** EuroSAT represents a domain-shifted remote-sensing dataset, while Caltech101 represents general object diversity. Using only validation splits explicitly avoids test-set overfitting. Pre-registering candidates and tie-breaks prevents post-hoc selection accusations.
 - **Date / Decided by:** 2026-06-16 / HN Tran

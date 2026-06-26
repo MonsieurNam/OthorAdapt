@@ -11,7 +11,7 @@ export DATA_ROOT=/root/DATA
 export RUN_STAMP="$(date +%Y%m%d_%H%M%S)"
 
 SRC=revision_materials/scripts/validation_sweep_commands.sh
-MANIFEST=revision_materials/results/validation_sweep_results.jsonl
+MANIFEST=revision_materials/results/validation_sweep_ramp100_results.jsonl
 
 # Tập filename đã completed trong manifest
 mapfile -t DONE < <(
@@ -41,7 +41,7 @@ if ! "$PYTHON" -c 'import torch' 2>/dev/null; then
 fi
 echo ">>> Dùng python: $PYTHON ($("$PYTHON" -c 'import torch;print("torch",torch.__version__,"cuda",torch.cuda.is_available())'))"
 
-mkdir -p revision_materials/logs/validation_sweep
+mkdir -p revision_materials/logs/validation_sweep_ramp100
 
 total=0; ran=0; skipped=0
 # Đọc từng dòng lệnh main.py trong script gốc

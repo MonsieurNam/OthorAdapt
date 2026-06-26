@@ -41,9 +41,9 @@ bash revision_materials/scripts/phase3b_same_param_commands.sh
 
 Outputs:
 
-- Manifest: `revision_materials/results/phase3b_same_param_results.jsonl`
-- Logs: `revision_materials/logs/phase3b_same_param/`
-- Checkpoints: `revision_materials/checkpoints/phase3b_same_param/`
+- Manifest: `revision_materials/results/phase3b_same_param_ramp100_results.jsonl`
+- Logs: `revision_materials/logs/phase3b_same_param_ramp100/`
+- Checkpoints: `revision_materials/checkpoints/phase3b_same_param_ramp100/`
 
 ## Resume
 
@@ -90,7 +90,7 @@ One-time backup:
 
 ```bash
 RCLONE_REMOTE=gdrive \
-GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_backups \
+GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_ramp100_backups \
 INCLUDE_CHECKPOINTS=1 \
 bash revision_materials/scripts/phase3b_backup_to_gdrive.sh once
 ```
@@ -100,7 +100,7 @@ Looping backup:
 ```bash
 tmux new-session -d -s phase3b_backup
 tmux send-keys -t phase3b_backup \
-  'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3b_backup_to_gdrive.sh loop' C-m
+  'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_ramp100_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3b_backup_to_gdrive.sh loop' C-m
 ```
 
 ## Cron Restore After Reboot
@@ -137,5 +137,5 @@ tmux send-keys -t phase3b_telegram \
 
 - CLIP-LoRA commands intentionally contain `--r 2` only. They must not contain
   `--num_heads` or `--lambda_o`.
-- OrthoAdapt commands intentionally contain `--num_heads 2 --r 2 --lambda_o 0.03`.
-- Keep this manifest separate from `phase3_main_results.jsonl`.
+- OrthoAdapt commands intentionally contain `--num_heads 2 --r 2 --lambda_o 0.03 --ramp_up_steps 100`.
+- Keep this manifest separate from `phase3_main_ramp100_results.jsonl`.

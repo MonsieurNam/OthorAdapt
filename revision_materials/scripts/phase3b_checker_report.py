@@ -13,8 +13,8 @@ import phase3_resumable_runner as runner  # noqa: E402
 
 
 DEFAULT_COMMANDS = Path("revision_materials/scripts/phase3b_same_param_commands.sh")
-DEFAULT_MANIFEST = Path("revision_materials/results/phase3b_same_param_results.jsonl")
-DEFAULT_RUNTIME_SOURCE = Path("revision_materials/results/validation_sweep_results_protocol.jsonl")
+DEFAULT_MANIFEST = Path("revision_materials/results/phase3b_same_param_ramp100_results.jsonl")
+DEFAULT_RUNTIME_SOURCE = Path("revision_materials/results/validation_sweep_ramp100_results.jsonl")
 VN_TZ = timezone(timedelta(hours=7))
 
 

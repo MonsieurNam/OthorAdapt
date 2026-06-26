@@ -2,10 +2,10 @@
   "schema_version": "phase3.main.v1",
   "status": "FROZEN_AFTER_PHASE2_SELECTION",
   "selected_config_source": {
-    "selected_config": "revision_materials/results/selected_config.md",
-    "selected_config_sha256": "revision_materials/results/selected_config.md.sha256",
-    "validation_manifest": "revision_materials/results/validation_sweep_results_protocol.jsonl",
-    "validation_audit": "revision_materials/results/validation_sweep_protocol_audit.md"
+    "selected_config": "revision_materials/results/selected_config_ramp100.md",
+    "selected_config_sha256": "revision_materials/results/selected_config_ramp100.md.sha256",
+    "validation_manifest": "revision_materials/results/validation_sweep_ramp100_results.jsonl",
+    "validation_audit": "revision_materials/results/validation_sweep_ramp100_protocol_audit.md"
   },
   "rationale": "Phase 3 evaluates the final selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. The main matrix compares OrthoAdapt against the public CLIP-LoRA baseline with the same selected rank budget for paired seed-level comparisons. SingLoRA-CLIP is excluded from the main matrix because it is an internal unpublished CLIP adaptation rather than a stable citable few-shot CLIP baseline.",
   "datasets": [
@@ -39,16 +39,17 @@
       "r": 4,
       "alpha": 1,
       "num_heads": 2,
-      "lambda_o": 0.0
+      "lambda_o": 0.0,
+      "ramp_up_steps": 100
     }
   ],
   "base_command": {
     "python": "$PYTHON",
     "entrypoint": "main.py",
     "root_path": "${DATA_ROOT}",
-    "run_manifest": "revision_materials/results/phase3_main_results.jsonl",
-    "save_path": "revision_materials/checkpoints/phase3_main",
-    "log_dir": "revision_materials/logs/phase3_main",
+    "run_manifest": "revision_materials/results/phase3_main_ramp100_results.jsonl",
+    "save_path": "revision_materials/checkpoints/phase3_main_ramp100",
+    "log_dir": "revision_materials/logs/phase3_main_ramp100",
     "backbone": "ViT-B/16",
     "encoder": "both",
     "position": "all",
@@ -69,7 +70,7 @@
     "validation_split_as_final_metric": true
   },
   "expected_outputs_after_server_run": {
-    "manifest": "revision_materials/results/phase3_main_results.jsonl",
-    "aggregate_csv": "revision_materials/results/phase3_main_summary.csv"
+    "manifest": "revision_materials/results/phase3_main_ramp100_results.jsonl",
+    "aggregate_csv": "revision_materials/results/phase3_main_ramp100_summary.csv"
   }
 }

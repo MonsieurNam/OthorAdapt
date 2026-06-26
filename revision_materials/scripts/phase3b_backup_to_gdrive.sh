@@ -6,7 +6,7 @@ set -euo pipefail
 BASE_DIR="${BASE_DIR:-/root/OthorAdapt/revision_materials}"
 RCLONE="${RCLONE:-/opt/conda/bin/rclone}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive}"
-GDRIVE_DIR="${GDRIVE_DIR:-RESEARCH/OHSinglora_CLIP/phase3b_same_param_backups}"
+GDRIVE_DIR="${GDRIVE_DIR:-RESEARCH/OHSinglora_CLIP/phase3b_same_param_ramp100_backups}"
 INTERVAL="${INTERVAL:-5h}"
 STAGING_DIR="${STAGING_DIR:-/root/OthorAdapt/revision_materials/backups}"
 RETENTION="${RETENTION:-12}"
@@ -97,7 +97,7 @@ Default backup contents:
 
 Recommended tmux loop:
   tmux new-session -d -s phase3b_backup
-  tmux send-keys -t phase3b_backup 'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3b_backup_to_gdrive.sh loop' C-m
+  tmux send-keys -t phase3b_backup 'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3b_same_param_ramp100_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3b_backup_to_gdrive.sh loop' C-m
 EOF
 }
 
@@ -117,14 +117,14 @@ make_zip() {
   done
 
   : > "$filelist"
-  if [[ "$INCLUDE_CHECKPOINTS" == "1" && -d "${BASE_DIR}/checkpoints/phase3b_same_param" ]]; then
+  if [[ "$INCLUDE_CHECKPOINTS" == "1" && -d "${BASE_DIR}/checkpoints/phase3b_same_param_ramp100" ]]; then
     log "Checkpoint backup enabled; including Phase 3B checkpoint files older than ${CHECKPOINT_MIN_AGE_MINUTES} minute(s)."
     (
       cd "$BASE_DIR"
       if [[ "$CHECKPOINT_MIN_AGE_MINUTES" -eq 0 ]]; then
-        find checkpoints/phase3b_same_param -type f -print
+        find checkpoints/phase3b_same_param_ramp100 -type f -print
       else
-        find checkpoints/phase3b_same_param -type f -mmin +"$CHECKPOINT_MIN_AGE_MINUTES" -print
+        find checkpoints/phase3b_same_param_ramp100 -type f -mmin +"$CHECKPOINT_MIN_AGE_MINUTES" -print
       fi
     ) >> "$filelist"
   fi

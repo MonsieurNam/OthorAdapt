@@ -6,7 +6,13 @@ from pathlib import Path
 
 
 PROTOCOL_SCHEMA_VERSION = "phase3.main.v1"
-SELECTED_ORTHOADAPT = {"adapter": "ohsinglora", "num_heads": 2, "r": 4, "lambda_o": 0.0}
+SELECTED_ORTHOADAPT = {
+    "adapter": "ohsinglora",
+    "num_heads": 2,
+    "r": 4,
+    "lambda_o": 0.0,
+    "ramp_up_steps": 100,
+}
 
 
 def load_protocol(path):
@@ -64,6 +70,8 @@ def validate_protocol(protocol):
                 f"Phase 3 selected OrthoAdapt config mismatch for {key}: "
                 f"expected {value}, got {selected.get(key)}"
             )
+    if int(selected["ramp_up_steps"]) != 100:
+        raise ValueError("Phase 3 OrthoAdapt must use ramp_up_steps=100")
 
 
 def _base_flags(base):
@@ -85,10 +93,14 @@ def _base_flags(base):
 def _run_name(dataset, shot, seed, method):
     adapter = method["adapter"]
     if adapter == "ohsinglora":
+        ramp_tag = ""
+        if "ramp_up_steps" in method:
+            ramp_tag = f"_ramp{int(method['ramp_up_steps'])}"
         return (
             f"{dataset}_{int(shot)}shot_seed{int(seed)}_test_{adapter}"
             f"_h{int(method['num_heads'])}_r{int(method['r'])}"
             f"_lo{_lambda_tag(method['lambda_o'])}"
+            f"{ramp_tag}"
         )
     return f"{dataset}_{int(shot)}shot_seed{int(seed)}_test_{adapter}_r{int(method['r'])}"
 
@@ -121,6 +133,7 @@ def generate_main_commands(protocol):
                     if method["adapter"] == "ohsinglora":
                         flags.insert(4, f"--num_heads {int(method['num_heads'])}")
                         flags.insert(7, f"--lambda_o {float(method['lambda_o'])}")
+                        flags.insert(8, f"--ramp_up_steps {int(method['ramp_up_steps'])}")
                     run_command = " ".join(
                         [_quote(base["python"]), _quote(base["entrypoint"]), *base_flags, *flags]
                     )

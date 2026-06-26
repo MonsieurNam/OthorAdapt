@@ -177,6 +177,8 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] `selection_protocol.yaml`. **Frozen in `revision_materials/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
 - [x] `validation_sweep_results.jsonl`. **Server run completed with 121 raw rows: 120 protocol-valid validation rows plus one preserved pre-sweep manual row outside the frozen grid. Protocol-only manifest is `revision_materials/results/validation_sweep_results_protocol.jsonl`; audit is `revision_materials/results/validation_sweep_protocol_audit.md`.**
 - [x] `selected_config.md`. **Generated from the 120-row protocol-only manifest after fail-closed selector rejected the raw manifest's out-of-protocol row. Winner: `num_heads=2`, `r=4`, `lambda_o=0.0`, mean validation accuracy `91.541667`.**
+- [ ] `validation_sweep_ramp100_results.jsonl`. **Mandatory rerun added after discovering old OH-SingLoRA runs used the default `ramp_up_steps=1000`; the regenerated commands now force `--ramp_up_steps 100` and write to ramp100-specific logs/checkpoints/manifests.**
+- [ ] `selected_config_ramp100.md`. **Freeze this ramp100 winner before any new Phase 3 test-set run. If the winner changes, update `phase3_main_protocol.yaml` and regenerate `phase3_main_commands.sh`.**
 
 **Tasks:**
 - [x] Freeze validation aggregate and rationale before running sweeps. **Protocol selects by unweighted mean validation accuracy over EuroSAT and Caltech101, 4-shot, seeds {1,2,3}; candidate grid and tie-breaks match `Author_Decisions.md`.**
@@ -184,7 +186,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] Record all candidates in JSONL. **Server manifest contains all 120 frozen candidate rows exactly once; the raw manifest also preserves one accidental pre-sweep manual row for auditability.**
 - [x] Select winner by frozen rule only. **Selector failed closed on the raw 121-row manifest, then succeeded on `validation_sweep_results_protocol.jsonl` after excluding the documented out-of-protocol row. Output: `revision_materials/results/selected_config.md`.**
 - [x] Hash and freeze `selected_config.md`. **SHA256 sidecar exists at `revision_materials/results/selected_config.md.sha256`.**
-- [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` explicitly blocks Phase 3 until `selected_config.md` exists.**
+- [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` now blocks new Phase 3 test-set evaluation until `selected_config_ramp100.md` exists.**
 
 ---
 

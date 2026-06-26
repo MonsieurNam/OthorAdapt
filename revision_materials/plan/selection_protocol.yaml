@@ -46,9 +46,9 @@
     "python": "$PYTHON",
     "entrypoint": "main.py",
     "root_path": "${DATA_ROOT}",
-    "run_manifest": "revision_materials/results/validation_sweep_results.jsonl",
-    "save_path": "revision_materials/checkpoints/validation_sweep",
-    "log_dir": "revision_materials/logs/validation_sweep",
+    "run_manifest": "revision_materials/results/validation_sweep_ramp100_results.jsonl",
+    "save_path": "revision_materials/checkpoints/validation_sweep_ramp100",
+    "log_dir": "revision_materials/logs/validation_sweep_ramp100",
     "adapter": "ohsinglora",
     "backbone": "ViT-B/16",
     "encoder": "both",
@@ -60,6 +60,7 @@
     ],
     "n_iters": 500,
     "batch_size": 32,
+    "ramp_up_steps": 100,
     "loss_fn": "ce",
     "ortho_reduction": "mean"
   },
@@ -69,8 +70,8 @@
     "test_metrics_for_non_winners": true
   },
   "expected_outputs_after_server_run": {
-    "manifest": "revision_materials/results/validation_sweep_results.jsonl",
-    "selected_config": "revision_materials/results/selected_config.md",
-    "selected_config_hash": "revision_materials/results/selected_config.md.sha256"
+    "manifest": "revision_materials/results/validation_sweep_ramp100_results.jsonl",
+    "selected_config": "revision_materials/results/selected_config_ramp100.md",
+    "selected_config_hash": "revision_materials/results/selected_config_ramp100.md.sha256"
   }
 }

@@ -11,7 +11,7 @@ set -euo pipefail
 BASE_DIR="${BASE_DIR:-/root/OthorAdapt/revision_materials}"
 RCLONE="${RCLONE:-/opt/conda/bin/rclone}"
 RCLONE_REMOTE="${RCLONE_REMOTE:-gdrive}"            # rclone remote name
-GDRIVE_DIR="${GDRIVE_DIR:-RESEARCH/OHSinglora_CLIP/phase3_backups}"  # folder inside the remote
+GDRIVE_DIR="${GDRIVE_DIR:-RESEARCH/OHSinglora_CLIP/phase3_ramp100_backups}"  # folder inside the remote
 INTERVAL="${INTERVAL:-5h}"                          # sleep between runs
 STAGING_DIR="${STAGING_DIR:-/root/OthorAdapt/revision_materials/backups}"
 RETENTION="${RETENTION:-12}"                        # keep N newest local zips (0 = keep all)
@@ -93,7 +93,7 @@ STAGING_DIR and uploads them to Google Drive via rclone.
 Default backup contents:
   revision_materials/results
   revision_materials/logs
-  revision_materials/checkpoints files older than CHECKPOINT_MIN_AGE_MINUTES
+  revision_materials/checkpoints/phase3_main_ramp100 files older than CHECKPOINT_MIN_AGE_MINUTES
   revision_materials/plan/phase3_main_protocol.yaml
   revision_materials/scripts/phase3_main_commands.sh
   revision_materials/scripts/phase3_resumable_runner.py
@@ -104,7 +104,7 @@ Optional environment variables:
   BASE_DIR=/root/OthorAdapt/revision_materials
   RCLONE=/opt/conda/bin/rclone
   RCLONE_REMOTE=gdrive
-  GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3_backups
+  GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3_ramp100_backups
   INTERVAL=5h
   STAGING_DIR=/root/OthorAdapt/revision_materials/backups
   RETENTION=12
@@ -119,7 +119,7 @@ Skip checkpoint files when you only need lightweight logs/results:
 
 Recommended tmux loop:
   tmux new-session -d -s phase3_backup
-  tmux send-keys -t phase3_backup 'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3_backup_to_gdrive.sh loop' C-m
+  tmux send-keys -t phase3_backup 'cd /root/OthorAdapt && RCLONE_REMOTE=gdrive GDRIVE_DIR=RESEARCH/OHSinglora_CLIP/phase3_ramp100_backups INCLUDE_CHECKPOINTS=1 bash revision_materials/scripts/phase3_backup_to_gdrive.sh loop' C-m
 
 One-time rclone setup:
   /opt/conda/bin/rclone config
@@ -142,14 +142,14 @@ make_zip() {
   done
 
   : > "$filelist"
-  if [[ "$INCLUDE_CHECKPOINTS" == "1" && -d "${BASE_DIR}/checkpoints" ]]; then
+  if [[ "$INCLUDE_CHECKPOINTS" == "1" && -d "${BASE_DIR}/checkpoints/phase3_main_ramp100" ]]; then
     log "Checkpoint backup enabled; including checkpoint files older than ${CHECKPOINT_MIN_AGE_MINUTES} minute(s)."
     (
       cd "$BASE_DIR"
       if [[ "$CHECKPOINT_MIN_AGE_MINUTES" -eq 0 ]]; then
-        find checkpoints -type f -print
+        find checkpoints/phase3_main_ramp100 -type f -print
       else
-        find checkpoints -type f -mmin +"$CHECKPOINT_MIN_AGE_MINUTES" -print
+        find checkpoints/phase3_main_ramp100 -type f -mmin +"$CHECKPOINT_MIN_AGE_MINUTES" -print
       fi
     ) >> "$filelist"
   fi
