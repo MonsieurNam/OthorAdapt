@@ -113,7 +113,7 @@ def _run_name(dataset, shot, seed, method):
     return f"{dataset}_{int(shot)}shot_seed{int(seed)}_test_{adapter}_r{int(method['r'])}"
 
 
-def generate_phase3b_commands(protocol):
+def generate_phase3b_commands(protocol, adapter_filter=None):
     validate_protocol(protocol)
     base = protocol["base_command"]
     base_flags = _base_flags(base)
@@ -121,6 +121,8 @@ def generate_phase3b_commands(protocol):
     commands = []
 
     for method in protocol["methods"]:
+        if adapter_filter and method["adapter"] != adapter_filter:
+            continue
         for dataset in protocol["datasets"]:
             for shot in protocol["shots"]:
                 for seed in protocol["seeds"]:
@@ -173,11 +175,17 @@ def main(argv=None):
     generate = subparsers.add_parser("generate", help="Generate Phase 3B bash commands")
     generate.add_argument("--protocol", required=True)
     generate.add_argument("--out", required=True)
+    generate.add_argument(
+        "--adapter-filter",
+        choices=["lora", "ohsinglora"],
+        default=None,
+        help="Generate commands only for one adapter",
+    )
 
     args = parser.parse_args(argv)
     if args.command == "generate":
         protocol = load_protocol(args.protocol)
-        write_commands(generate_phase3b_commands(protocol), args.out)
+        write_commands(generate_phase3b_commands(protocol, args.adapter_filter), args.out)
 
 
 if __name__ == "__main__":
