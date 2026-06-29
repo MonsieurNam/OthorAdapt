@@ -2,6 +2,21 @@
 
 Use these steps on the rented server. Do not run test-set evaluation during this phase.
 
+## Current Status
+
+Phase 2 ramp100 validation is complete.
+
+- Manifest: `revision_materials/results/validation_sweep_ramp100_results.jsonl`
+- Rows: 120/120 completed
+- Split: all rows use `selection_split=val`
+- Test reporting: all rows have `report_test=false`
+- Ramp schedule: all rows use `ramp_up_steps=100`
+- Frozen winner: `H=2`, `r=8`, `lambda_o=0.03`, mean validation accuracy `91.666667`
+- Frozen selection file: `revision_materials/results/selected_config_ramp100.md`
+- SHA256 sidecar: `revision_materials/results/selected_config_ramp100.md.sha256`
+
+These instructions are retained for reproducibility or rerun only. The next stage is Phase 3 ramp100 test-set evaluation using the frozen winner and matched CLIP-LoRA baseline.
+
 ## 1. Prepare
 
 ```bash
@@ -66,4 +81,4 @@ Expected outputs:
 - `revision_materials/results/selected_config_ramp100.md`
 - `revision_materials/results/selected_config_ramp100.md.sha256`
 
-Do not start Phase 3 test-set evaluation until `selected_config_ramp100.md` and its SHA256 sidecar exist. If the ramp100 winner differs from the Phase 3 protocol, update and regenerate `phase3_main_commands.sh` before any test-set run.
+Phase 3 test-set evaluation may start only after `selected_config_ramp100.md` and its SHA256 sidecar exist. They now exist, and the Phase 3 main protocol has been updated to the ramp100 winner `H=2,r=8,lambda_o=0.03`; use the regenerated Phase 3 command files rather than older `r=4,lambda_o=0.0` commands.

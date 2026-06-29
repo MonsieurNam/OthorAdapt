@@ -1,6 +1,6 @@
 {
   "schema_version": "phase2.selection.v1",
-  "status": "FROZEN_BEFORE_SERVER_SWEEP",
+  "status": "FROZEN_AND_COMPLETED",
   "selection_split": "val",
   "rationale": "Pre-registered validation-only selection to address the reviewer concern that hyperparameters were tuned on test data. EuroSAT represents domain-shifted remote sensing; Caltech101 represents general object diversity. The 4-shot setting is used as the calibration sweep to keep compute bounded before the full Tier-A matrix.",
   "selection_metric": {
@@ -73,5 +73,21 @@
     "manifest": "revision_materials/results/validation_sweep_ramp100_results.jsonl",
     "selected_config": "revision_materials/results/selected_config_ramp100.md",
     "selected_config_hash": "revision_materials/results/selected_config_ramp100.md.sha256"
+  },
+  "completed_outputs": {
+    "manifest_rows": 120,
+    "completed_rows": 120,
+    "candidate_count": 20,
+    "rows_per_candidate": 6,
+    "all_selection_split": "val",
+    "all_report_test": false,
+    "all_ramp_up_steps": 100,
+    "selected_config": {
+      "num_heads": 2,
+      "r": 8,
+      "lambda_o": 0.03,
+      "mean_validation_accuracy": 91.666667,
+      "source": "revision_materials/results/selected_config_ramp100.md"
+    }
   }
 }

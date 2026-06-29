@@ -177,7 +177,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] `selection_protocol.yaml`. **Frozen in `revision_materials/plan/selection_protocol.yaml`; JSON-compatible YAML to avoid extra parser dependency; uses validation split only.**
 - [x] `validation_sweep_results.jsonl`. **Server run completed with 121 raw rows: 120 protocol-valid validation rows plus one preserved pre-sweep manual row outside the frozen grid. Protocol-only manifest is `revision_materials/results/validation_sweep_results_protocol.jsonl`; audit is `revision_materials/results/validation_sweep_protocol_audit.md`.**
 - [x] `selected_config.md`. **Generated from the 120-row protocol-only manifest after fail-closed selector rejected the raw manifest's out-of-protocol row. Winner: `num_heads=2`, `r=4`, `lambda_o=0.0`, mean validation accuracy `91.541667`.**
-- [ ] `validation_sweep_ramp100_results.jsonl`. **Mandatory rerun added after discovering old OH-SingLoRA runs used the default `ramp_up_steps=1000`; the regenerated commands now force `--ramp_up_steps 100` and write to ramp100-specific logs/checkpoints/manifests.**
+- [x] `validation_sweep_ramp100_results.jsonl`. **Ramp100 validation rerun complete: 120/120 rows, all `completed`, all `selection_split=val`, all `report_test=false`, all `ramp_up_steps=100`; 20 candidates each have full 6-row coverage over EuroSAT/Caltech101, 4-shot, seeds {1,2,3}.**
 - [x] `selected_config_ramp100.md`. **Freeze complete. Winner changed to `num_heads=2`, `r=8`, `lambda_o=0.03`, mean validation accuracy `91.666667`; Phase 3 main protocol and command generation must use this winner.**
 
 **Tasks:**
@@ -186,7 +186,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] Record all candidates in JSONL. **Server manifest contains all 120 frozen candidate rows exactly once; the raw manifest also preserves one accidental pre-sweep manual row for auditability.**
 - [x] Select winner by frozen rule only. **Selector failed closed on the raw 121-row manifest, then succeeded on `validation_sweep_results_protocol.jsonl` after excluding the documented out-of-protocol row. Output: `revision_materials/results/selected_config.md`.**
 - [x] Hash and freeze `selected_config.md`. **SHA256 sidecar exists at `revision_materials/results/selected_config.md.sha256`.**
-- [x] Do not evaluate test data for non-winning candidates. **Generation and policy forbid `--report_test`; `phase2_server_run_instructions.md` now blocks new Phase 3 test-set evaluation until `selected_config_ramp100.md` exists.**
+- [x] Do not evaluate test data for non-winning candidates. **Ramp100 validation manifest confirms all 120 sweep rows are validation-only with no test reporting. Phase 3 test-set evaluation is now allowed only for the frozen ramp100 winner `H=2,r=8,lambda_o=0.03` and the matched CLIP-LoRA baseline in `phase3_main_protocol.yaml`.**
 
 ---
 
@@ -198,7 +198,7 @@ Author decisions must be recorded before running experiments that depend on them
 - `main_results_manifest.jsonl`
 - `statistical_report.md`
 - `generated_tables.tex`
-- [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. Updated to 144 test-set commands: 8 datasets x 3 shots x 2 methods x 3 seeds. SingLoRA-CLIP is excluded from the main matrix by author decision because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline.**
+- [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. Updated after ramp100 selection to 144 test-set commands: 8 datasets x 3 shots x 2 methods x 3 seeds. The OrthoAdapt arm uses the frozen validation winner `H=2,r=8,lambda_o=0.03,ramp_up_steps=100`; the CLIP-LoRA arm uses `r=8` for a selected-rank matched comparison. SingLoRA-CLIP is excluded from the main matrix by author decision because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline.**
 
 **Minimum Tier A tasks:**
 - [ ] Run CLIP-LoRA and OrthoAdapt. SingLoRA-CLIP is documented as excluded from the main baseline matrix; do not present it as Tier-A reviewer evidence.

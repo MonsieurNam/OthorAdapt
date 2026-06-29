@@ -77,8 +77,9 @@ reproducible CLIP-specific version becomes available.
 The Phase 3 protocol uses only the public direct baseline and the proposed
 method:
 
-- `lora`: CLIP-LoRA baseline, rank `r=4`.
-- `ohsinglora`: OrthoAdapt selected configuration, `H=2`, `r=4`,
-  `lambda_o=0.0`.
+- `lora`: CLIP-LoRA baseline, rank `r=8` in the Phase 3 main
+  selected-rank comparison.
+- `ohsinglora`: OrthoAdapt ramp100 validation-selected configuration,
+  `H=2`, `r=8`, `lambda_o=0.03`, `ramp_up_steps=100`.
 
 No Phase 3 command should contain `--adapter singlora`.
