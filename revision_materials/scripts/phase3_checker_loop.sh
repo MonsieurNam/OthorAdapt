@@ -19,6 +19,11 @@ case "$NOTE_EVERY" in ''|*[!0-9]*) NOTE_EVERY=1 ;; esac  # must be a positive in
 COST_PER_HOUR_VND=${COST_PER_HOUR_VND:-5000}
 CHECKER_LOCK_DIR=${CHECKER_LOCK_DIR:-/root/OthorAdapt/revision_materials/logs/phase3_checker_loop.lock}
 GDRIVE_BACKUP_STATUS_FILE=${GDRIVE_BACKUP_STATUS_FILE:-/root/OthorAdapt/revision_materials/logs/phase3_gdrive_backup_status.env}
+PHASE3_COMMANDS=${PHASE3_COMMANDS:-revision_materials/scripts/phase3_main_commands.sh}
+PHASE3_MANIFEST=${PHASE3_MANIFEST:-revision_materials/results/phase3_main_ramp100_results.jsonl}
+PHASE3_RUNTIME_SOURCE=${PHASE3_RUNTIME_SOURCE:-revision_materials/results/validation_sweep_ramp100_results.jsonl}
+PHASE3_RUN_LABEL=${PHASE3_RUN_LABEL:-phase3_main_ramp100}
+PHASE3_TMUX_SESSION=${PHASE3_TMUX_SESSION:-run_ablation}
 
 cd "$PROJECT_ROOT"
 export DATA_ROOT
@@ -67,8 +72,8 @@ now_vn() {
 
 phase3_active_process_count() {
   ps -eo args \
-    | grep -E 'python[0-9.]* +main\.py|phase3_resumable_runner\.py|phase3_main_commands\.sh' \
-    | grep -E 'phase3_main|phase3_resumable_runner|phase3_main_commands' \
+    | grep -E 'python[0-9.]* +main\.py|phase3_resumable_runner\.py|phase3_main(_oh_ramp100|_lora_r8)?_commands\.sh' \
+    | grep -E 'phase3_main|phase3_resumable_runner|phase3_main_commands|phase3_main_oh_ramp100_commands|phase3_main_lora_r8_commands' \
     | grep -v -E 'grep|phase3_checker_loop|phase3_checker_report' \
     | wc -l
 }
@@ -114,7 +119,7 @@ write_gdrive_backup_note() {
 }
 
 pending_count() {
-  "$PYTHON" "$REPORT" 2>/dev/null \
+  "$PYTHON" "$REPORT" --commands "$PHASE3_COMMANDS" --manifest "$PHASE3_MANIFEST" --runtime-source "$PHASE3_RUNTIME_SOURCE" 2>/dev/null \
     | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('pending', '?'))" 2>/dev/null \
     || echo "?"
 }
@@ -127,24 +132,26 @@ resume_phase3() {
   # re-checks for stragglers and SKIPS launching if any remain. Manual migration
   # is where killing belongs, not here.
   local stragglers
-  stragglers=$(ps -eo args | grep -E 'python[0-9.]* +main\.py' | grep 'phase3_main' | grep -v grep | wc -l)
+  stragglers=$(ps -eo args | grep -E 'python[0-9.]* +main\.py' | grep "$PHASE3_RUN_LABEL" | grep -v grep | wc -l)
   if [ "$stragglers" -ne 0 ]; then
     echo "STRAGGLER_WARNING:$stragglers"
     return 1
   fi
-  tmux has-session -t run_ablation 2>/dev/null || tmux new-session -d -s run_ablation
-  tmux send-keys -t run_ablation \
-    "cd '$PROJECT_ROOT' && DATA_ROOT='$DATA_ROOT' PYTHON='$PYTHON' '$PYTHON' '$RUNNER' 2>&1 | tee revision_materials/logs/phase3_resume_\$(date +%Y%m%d_%H%M%S).log" C-m
+  tmux has-session -t "$PHASE3_TMUX_SESSION" 2>/dev/null || tmux new-session -d -s "$PHASE3_TMUX_SESSION"
+  tmux send-keys -t "$PHASE3_TMUX_SESSION" \
+    "cd '$PROJECT_ROOT' && DATA_ROOT='$DATA_ROOT' PYTHON='$PYTHON' '$PYTHON' '$RUNNER' --commands '$PHASE3_COMMANDS' --manifest '$PHASE3_MANIFEST' --runtime-source '$PHASE3_RUNTIME_SOURCE' 2>&1 | tee revision_materials/logs/phase3_resume_\$(date +%Y%m%d_%H%M%S).log" C-m
 }
 
 write_progress_note() {
   local action="$1"
   local report_json
-  report_json=$(COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" "$REPORT" 2>/dev/null || echo '{}')
+  report_json=$(COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" "$REPORT" --commands "$PHASE3_COMMANDS" --manifest "$PHASE3_MANIFEST" --runtime-source "$PHASE3_RUNTIME_SOURCE" 2>/dev/null || echo '{}')
   {
     echo ""
     echo "## $(now_vn) VN ($(date -u +'%Y-%m-%d %H:%M') UTC)"
     echo "- Status: $action"
+    echo "- Commands: $PHASE3_COMMANDS"
+    echo "- Manifest: $PHASE3_MANIFEST"
     echo "$report_json" | COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" -c '
 import json, os, sys
 try:

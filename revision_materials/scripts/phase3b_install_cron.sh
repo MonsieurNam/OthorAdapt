@@ -12,6 +12,11 @@ GDRIVE_DIR="${GDRIVE_DIR:-RESEARCH/OHSinglora_CLIP/phase3b_same_param_ramp100_ba
 BACKUP_INTERVAL="${BACKUP_INTERVAL:-5h}"
 INCLUDE_CHECKPOINTS="${INCLUDE_CHECKPOINTS:-1}"
 REMOTE_RETENTION_DAYS="${REMOTE_RETENTION_DAYS:-7}"
+PHASE3B_COMMANDS="${PHASE3B_COMMANDS:-revision_materials/scripts/phase3b_same_param_commands.sh}"
+PHASE3B_MANIFEST="${PHASE3B_MANIFEST:-revision_materials/results/phase3b_same_param_ramp100_results.jsonl}"
+PHASE3B_RUNTIME_SOURCE="${PHASE3B_RUNTIME_SOURCE:-revision_materials/results/validation_sweep_ramp100_results.jsonl}"
+PHASE3B_RUN_LABEL="${PHASE3B_RUN_LABEL:-phase3b_same_param_ramp100}"
+PHASE3B_TMUX_SESSION="${PHASE3B_TMUX_SESSION:-run_phase3b}"
 
 BEGIN_MARKER="# OTHORADAPT_PHASE3B_CRON_BEGIN"
 END_MARKER="# OTHORADAPT_PHASE3B_CRON_END"
@@ -26,12 +31,22 @@ Usage:
 Installs @reboot cron entries that restart these loops after a server reboot:
   1. revision_materials/scripts/phase3b_checker_loop.sh
   2. revision_materials/scripts/phase3b_backup_to_gdrive.sh loop
+
+Common overrides:
+  PHASE3B_COMMANDS=revision_materials/scripts/phase3b_same_param_commands.sh
+  PHASE3B_MANIFEST=revision_materials/results/phase3b_same_param_ramp100_results.jsonl
+  PHASE3B_RUNTIME_SOURCE=revision_materials/results/validation_sweep_ramp100_results.jsonl
+  PHASE3B_RUN_LABEL=phase3b_same_param_ramp100
+  PHASE3B_TMUX_SESSION=run_phase3b
+
+For OH-only rerun:
+  PHASE3B_COMMANDS=revision_materials/scripts/phase3b_same_param_oh_ramp100_commands.sh
 EOF
 }
 
 checker_cron_line() {
-  printf '@reboot cd %s && mkdir -p revision_materials/logs && PROJECT_ROOT=%s DATA_ROOT=%s PYTHON=%s COST_PER_HOUR_VND=%s CHECKER_LOCK_DIR=%s/revision_materials/logs/phase3b_checker_loop.lock GDRIVE_BACKUP_STATUS_FILE=%s/revision_materials/logs/phase3b_gdrive_backup_status.env bash revision_materials/scripts/phase3b_checker_loop.sh >> revision_materials/logs/phase3b_checker_cron.log 2>&1\n' \
-    "$PROJECT_ROOT" "$PROJECT_ROOT" "$DATA_ROOT" "$PYTHON" "$COST_PER_HOUR_VND" "$PROJECT_ROOT" "$PROJECT_ROOT"
+  printf '@reboot cd %s && mkdir -p revision_materials/logs && PROJECT_ROOT=%s DATA_ROOT=%s PYTHON=%s COST_PER_HOUR_VND=%s PHASE3B_COMMANDS=%s PHASE3B_MANIFEST=%s PHASE3B_RUNTIME_SOURCE=%s PHASE3B_RUN_LABEL=%s PHASE3B_TMUX_SESSION=%s CHECKER_LOCK_DIR=%s/revision_materials/logs/phase3b_checker_loop.lock GDRIVE_BACKUP_STATUS_FILE=%s/revision_materials/logs/phase3b_gdrive_backup_status.env bash revision_materials/scripts/phase3b_checker_loop.sh >> revision_materials/logs/phase3b_checker_cron.log 2>&1\n' \
+    "$PROJECT_ROOT" "$PROJECT_ROOT" "$DATA_ROOT" "$PYTHON" "$COST_PER_HOUR_VND" "$PHASE3B_COMMANDS" "$PHASE3B_MANIFEST" "$PHASE3B_RUNTIME_SOURCE" "$PHASE3B_RUN_LABEL" "$PHASE3B_TMUX_SESSION" "$PROJECT_ROOT" "$PROJECT_ROOT"
 }
 
 backup_cron_line() {

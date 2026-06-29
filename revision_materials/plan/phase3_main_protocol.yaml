@@ -7,7 +7,7 @@
     "validation_manifest": "revision_materials/results/validation_sweep_ramp100_results.jsonl",
     "validation_audit": "revision_materials/results/validation_sweep_ramp100_protocol_audit.md"
   },
-  "rationale": "Phase 3 evaluates the final selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. The main matrix compares OrthoAdapt against the public CLIP-LoRA baseline with the same selected rank budget for paired seed-level comparisons. SingLoRA-CLIP is excluded from the main matrix because it is an internal unpublished CLIP adaptation rather than a stable citable few-shot CLIP baseline.",
+  "rationale": "Phase 3 evaluates the final ramp100-selected configuration on the test split. No test metrics are computed for non-winning hyperparameter candidates. The main matrix compares OrthoAdapt against the public CLIP-LoRA baseline with the same selected rank budget for paired seed-level comparisons. SingLoRA-CLIP is excluded from the main matrix because it is an internal unpublished CLIP adaptation rather than a stable citable few-shot CLIP baseline.",
   "datasets": [
     "fgvc",
     "eurosat",
@@ -31,15 +31,15 @@
   "methods": [
     {
       "adapter": "lora",
-      "r": 4,
+      "r": 8,
       "alpha": 1
     },
     {
       "adapter": "ohsinglora",
-      "r": 4,
+      "r": 8,
       "alpha": 1,
       "num_heads": 2,
-      "lambda_o": 0.0,
+      "lambda_o": 0.03,
       "ramp_up_steps": 100
     }
   ],

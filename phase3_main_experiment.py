@@ -9,8 +9,8 @@ PROTOCOL_SCHEMA_VERSION = "phase3.main.v1"
 SELECTED_ORTHOADAPT = {
     "adapter": "ohsinglora",
     "num_heads": 2,
-    "r": 4,
-    "lambda_o": 0.0,
+    "r": 8,
+    "lambda_o": 0.03,
     "ramp_up_steps": 100,
 }
 

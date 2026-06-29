@@ -178,7 +178,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] `validation_sweep_results.jsonl`. **Server run completed with 121 raw rows: 120 protocol-valid validation rows plus one preserved pre-sweep manual row outside the frozen grid. Protocol-only manifest is `revision_materials/results/validation_sweep_results_protocol.jsonl`; audit is `revision_materials/results/validation_sweep_protocol_audit.md`.**
 - [x] `selected_config.md`. **Generated from the 120-row protocol-only manifest after fail-closed selector rejected the raw manifest's out-of-protocol row. Winner: `num_heads=2`, `r=4`, `lambda_o=0.0`, mean validation accuracy `91.541667`.**
 - [ ] `validation_sweep_ramp100_results.jsonl`. **Mandatory rerun added after discovering old OH-SingLoRA runs used the default `ramp_up_steps=1000`; the regenerated commands now force `--ramp_up_steps 100` and write to ramp100-specific logs/checkpoints/manifests.**
-- [ ] `selected_config_ramp100.md`. **Freeze this ramp100 winner before any new Phase 3 test-set run. If the winner changes, update `phase3_main_protocol.yaml` and regenerate `phase3_main_commands.sh`.**
+- [x] `selected_config_ramp100.md`. **Freeze complete. Winner changed to `num_heads=2`, `r=8`, `lambda_o=0.03`, mean validation accuracy `91.666667`; Phase 3 main protocol and command generation must use this winner.**
 
 **Tasks:**
 - [x] Freeze validation aggregate and rationale before running sweeps. **Protocol selects by unweighted mean validation accuracy over EuroSAT and Caltech101, 4-shot, seeds {1,2,3}; candidate grid and tie-breaks match `Author_Decisions.md`.**

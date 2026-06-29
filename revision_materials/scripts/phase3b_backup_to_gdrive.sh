@@ -21,6 +21,7 @@ EXTRA_FILES=(
   plan/phase3b_same_param_protocol.yaml
   plan/phase3b_server_run_instructions.md
   scripts/phase3b_same_param_commands.sh
+  scripts/phase3b_same_param_oh_ramp100_commands.sh
   scripts/phase3b_resumable_runner.py
   scripts/phase3b_checker_report.py
   scripts/phase3b_checker_loop.sh
@@ -91,6 +92,7 @@ Default backup contents:
   revision_materials/plan/phase3b_same_param_protocol.yaml
   revision_materials/plan/phase3b_server_run_instructions.md
   revision_materials/scripts/phase3b_same_param_commands.sh
+  revision_materials/scripts/phase3b_same_param_oh_ramp100_commands.sh
   revision_materials/scripts/phase3b_resumable_runner.py
   revision_materials/scripts/phase3b_checker_report.py
   revision_materials/scripts/phase3b_checker_loop.sh

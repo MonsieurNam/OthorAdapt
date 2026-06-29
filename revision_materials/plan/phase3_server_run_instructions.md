@@ -97,7 +97,7 @@ No command may include:
 The only OrthoAdapt configuration allowed in Phase 3 is:
 
 ```text
-adapter=ohsinglora, num_heads=2, r=4, lambda_o=0.0, ramp_up_steps=100
+adapter=ohsinglora, num_heads=2, r=8, lambda_o=0.03, ramp_up_steps=100
 ```
 
 SingLoRA-CLIP is intentionally excluded from this main matrix because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline. The reviewer-facing rationale is recorded in `revision_materials/plan/singlora_clip_baseline_note.md`.

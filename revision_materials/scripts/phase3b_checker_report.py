@@ -4,6 +4,7 @@
 import json
 import os
 import sys
+import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -64,6 +65,8 @@ def build_report(
         "done": done,
         "total": len(commands),
         "pending": len(pending),
+        "commands": str(commands_path),
+        "manifest": str(manifest_path),
         "pending_iterations": pending_iterations,
         "eta_seconds": eta_seconds_int,
         "eta_human": runner.format_duration(eta_seconds_int),
@@ -76,8 +79,31 @@ def build_report(
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--commands", default=str(DEFAULT_COMMANDS))
+    parser.add_argument("--manifest", default=str(DEFAULT_MANIFEST))
+    parser.add_argument(
+        "--runtime-source",
+        action="append",
+        default=[],
+        help="Additional JSONL manifest for runtime estimation; can be repeated",
+    )
+    args = parser.parse_args()
     cost = int(os.environ.get("COST_PER_HOUR_VND", "5000"))
-    print(json.dumps(build_report(cost), sort_keys=True))
+    runtime_sources = [args.manifest, *args.runtime_source]
+    if DEFAULT_RUNTIME_SOURCE.exists() and str(DEFAULT_RUNTIME_SOURCE) not in runtime_sources:
+        runtime_sources.append(str(DEFAULT_RUNTIME_SOURCE))
+    print(
+        json.dumps(
+            build_report(
+                cost,
+                commands_path=args.commands,
+                manifest_path=args.manifest,
+                runtime_sources=runtime_sources,
+            ),
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":

@@ -12,6 +12,11 @@ case "$NOTE_EVERY" in ''|*[!0-9]*) NOTE_EVERY=1 ;; esac
 COST_PER_HOUR_VND=${COST_PER_HOUR_VND:-5000}
 CHECKER_LOCK_DIR=${CHECKER_LOCK_DIR:-/root/OthorAdapt/revision_materials/logs/phase3b_checker_loop.lock}
 GDRIVE_BACKUP_STATUS_FILE=${GDRIVE_BACKUP_STATUS_FILE:-/root/OthorAdapt/revision_materials/logs/phase3b_gdrive_backup_status.env}
+PHASE3B_COMMANDS=${PHASE3B_COMMANDS:-revision_materials/scripts/phase3b_same_param_commands.sh}
+PHASE3B_MANIFEST=${PHASE3B_MANIFEST:-revision_materials/results/phase3b_same_param_ramp100_results.jsonl}
+PHASE3B_RUNTIME_SOURCE=${PHASE3B_RUNTIME_SOURCE:-revision_materials/results/validation_sweep_ramp100_results.jsonl}
+PHASE3B_RUN_LABEL=${PHASE3B_RUN_LABEL:-phase3b_same_param_ramp100}
+PHASE3B_TMUX_SESSION=${PHASE3B_TMUX_SESSION:-run_phase3b}
 
 cd "$PROJECT_ROOT"
 export DATA_ROOT
@@ -58,8 +63,8 @@ now_vn() {
 
 phase3b_active_process_count() {
   ps -eo args \
-    | grep -E 'python[0-9.]* +main\.py|phase3b_resumable_runner\.py|phase3b_same_param_commands\.sh' \
-    | grep -E 'phase3b_same_param|phase3b_resumable_runner|phase3b_same_param_commands' \
+    | grep -E 'python[0-9.]* +main\.py|phase3b_resumable_runner\.py|phase3b_same_param(_oh_ramp100)?_commands\.sh' \
+    | grep -E 'phase3b_same_param|phase3b_resumable_runner|phase3b_same_param_commands|phase3b_same_param_oh_ramp100_commands' \
     | grep -v -E 'grep|phase3b_checker_loop|phase3b_checker_report' \
     | wc -l
 }
@@ -105,31 +110,33 @@ write_gdrive_backup_note() {
 }
 
 pending_count() {
-  "$PYTHON" "$REPORT" 2>/dev/null \
+  "$PYTHON" "$REPORT" --commands "$PHASE3B_COMMANDS" --manifest "$PHASE3B_MANIFEST" --runtime-source "$PHASE3B_RUNTIME_SOURCE" 2>/dev/null \
     | "$PYTHON" -c "import json,sys; print(json.load(sys.stdin).get('pending', '?'))" 2>/dev/null \
     || echo "?"
 }
 
 resume_phase3b() {
   local stragglers
-  stragglers=$(ps -eo args | grep -E 'python[0-9.]* +main\.py' | grep 'phase3b_same_param' | grep -v grep | wc -l)
+  stragglers=$(ps -eo args | grep -E 'python[0-9.]* +main\.py' | grep "$PHASE3B_RUN_LABEL" | grep -v grep | wc -l)
   if [ "$stragglers" -ne 0 ]; then
     echo "STRAGGLER_WARNING:$stragglers"
     return 1
   fi
-  tmux has-session -t run_phase3b 2>/dev/null || tmux new-session -d -s run_phase3b
-  tmux send-keys -t run_phase3b \
-    "cd '$PROJECT_ROOT' && DATA_ROOT='$DATA_ROOT' PYTHON='$PYTHON' '$PYTHON' '$RUNNER' 2>&1 | tee revision_materials/logs/phase3b_resume_\$(date +%Y%m%d_%H%M%S).log" C-m
+  tmux has-session -t "$PHASE3B_TMUX_SESSION" 2>/dev/null || tmux new-session -d -s "$PHASE3B_TMUX_SESSION"
+  tmux send-keys -t "$PHASE3B_TMUX_SESSION" \
+    "cd '$PROJECT_ROOT' && DATA_ROOT='$DATA_ROOT' PYTHON='$PYTHON' '$PYTHON' '$RUNNER' --commands '$PHASE3B_COMMANDS' --manifest '$PHASE3B_MANIFEST' --runtime-source '$PHASE3B_RUNTIME_SOURCE' 2>&1 | tee revision_materials/logs/phase3b_resume_\$(date +%Y%m%d_%H%M%S).log" C-m
 }
 
 write_progress_note() {
   local action="$1"
   local report_json
-  report_json=$(COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" "$REPORT" 2>/dev/null || echo '{}')
+  report_json=$(COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" "$REPORT" --commands "$PHASE3B_COMMANDS" --manifest "$PHASE3B_MANIFEST" --runtime-source "$PHASE3B_RUNTIME_SOURCE" 2>/dev/null || echo '{}')
   {
     echo ""
     echo "## $(now_vn) VN ($(date -u +'%Y-%m-%d %H:%M') UTC)"
     echo "- Status: $action"
+    echo "- Commands: $PHASE3B_COMMANDS"
+    echo "- Manifest: $PHASE3B_MANIFEST"
     echo "$report_json" | COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" -c '
 import json, os, sys
 try:

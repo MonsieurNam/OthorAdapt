@@ -12,6 +12,7 @@ iterations.
 import json
 import os
 import sys
+import argparse
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -27,7 +28,13 @@ def format_finish_time(dt):
     return dt.strftime("%Y-%m-%d %H:%M")
 
 
-def build_report(cost_per_hour_vnd=5000, now=None):
+def build_report(
+    cost_per_hour_vnd=5000,
+    now=None,
+    commands_path=runner.DEFAULT_COMMANDS,
+    manifest_path=runner.DEFAULT_MANIFEST,
+    runtime_sources=None,
+):
     if now is None:
         now = datetime.now(timezone.utc)
     elif now.tzinfo is None:
@@ -35,16 +42,15 @@ def build_report(cost_per_hour_vnd=5000, now=None):
     else:
         now = now.astimezone(timezone.utc)
 
-    commands = runner.load_phase3_commands(runner.DEFAULT_COMMANDS)
-    completed, runtimes = runner.completed_filenames(runner.DEFAULT_MANIFEST)
+    commands = runner.load_phase3_commands(commands_path)
+    completed, runtimes = runner.completed_filenames(manifest_path)
     pending = [c for c in commands if runner.extract_filename(c) not in completed]
     done = len(commands) - len(pending)
 
     # Seconds per iteration from completed rows (Phase 3 manifest first, then the
     # validation sweep protocol manifest). Both expose runtime + iterations.
-    seconds_per_iter = runner.seconds_per_iteration(
-        [str(runner.DEFAULT_MANIFEST), str(runner.DEFAULT_RUNTIME_SOURCE)]
-    )
+    sources = list(runtime_sources or [str(manifest_path), str(runner.DEFAULT_RUNTIME_SOURCE)])
+    seconds_per_iter = runner.seconds_per_iteration(sources)
     pending_iterations = sum(runner.command_iterations(c) or 0 for c in pending)
 
     if seconds_per_iter is not None and pending_iterations > 0:
@@ -67,6 +73,8 @@ def build_report(cost_per_hour_vnd=5000, now=None):
         "done": done,
         "total": len(commands),
         "pending": len(pending),
+        "commands": str(commands_path),
+        "manifest": str(manifest_path),
         "pending_iterations": pending_iterations,
         "eta_seconds": eta_seconds_int,
         "eta_human": runner.format_duration(eta_seconds_int),
@@ -79,8 +87,31 @@ def build_report(cost_per_hour_vnd=5000, now=None):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--commands", default=str(runner.DEFAULT_COMMANDS))
+    parser.add_argument("--manifest", default=str(runner.DEFAULT_MANIFEST))
+    parser.add_argument(
+        "--runtime-source",
+        action="append",
+        default=[],
+        help="Additional JSONL manifest for runtime estimation; can be repeated",
+    )
+    args = parser.parse_args()
     cost = int(os.environ.get("COST_PER_HOUR_VND", "5000"))
-    print(json.dumps(build_report(cost), sort_keys=True))
+    runtime_sources = [args.manifest, *args.runtime_source]
+    if runner.DEFAULT_RUNTIME_SOURCE.exists() and str(runner.DEFAULT_RUNTIME_SOURCE) not in runtime_sources:
+        runtime_sources.append(str(runner.DEFAULT_RUNTIME_SOURCE))
+    print(
+        json.dumps(
+            build_report(
+                cost,
+                commands_path=args.commands,
+                manifest_path=args.manifest,
+                runtime_sources=runtime_sources,
+            ),
+            sort_keys=True,
+        )
+    )
 
 
 if __name__ == "__main__":
