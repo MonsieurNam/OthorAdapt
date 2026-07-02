@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PYTHON=${PYTHON:-python3}
+DATA_ROOT=${DATA_ROOT:-/root/DATA}
+RUN_STAMP=${RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}
+
+mkdir -p revision_materials/logs/phase4_vitl14_pilot && $PYTHON main.py --root_path ${DATA_ROOT} --backbone ViT-L/14 --encoder both --position all --params q k v --n_iters 500 --batch_size 32 --loss_fn ce --ortho_reduction mean --dataset eurosat --shots 4 --seed 1 --adapter lora --r 8 --alpha 1 --save_path revision_materials/checkpoints/phase4_vitl14_pilot --filename eurosat_4shot_seed1_vitl14_lora_r8 --run_manifest revision_materials/results/phase4_vitl14_pilot_results.jsonl --selection_split test --report_test 2>&1 | tee revision_materials/logs/phase4_vitl14_pilot/eurosat_4shot_seed1_vitl14_lora_r8_${RUN_STAMP}.log
+mkdir -p revision_materials/logs/phase4_vitl14_pilot && $PYTHON main.py --root_path ${DATA_ROOT} --backbone ViT-L/14 --encoder both --position all --params q k v --n_iters 500 --batch_size 32 --loss_fn ce --ortho_reduction mean --dataset eurosat --shots 4 --seed 1 --num_heads 2 --adapter ohsinglora --lambda_o 0.03 --ramp_up_steps 100 --r 8 --alpha 1 --save_path revision_materials/checkpoints/phase4_vitl14_pilot --filename eurosat_4shot_seed1_vitl14_ohsinglora_r8_h2_lo0p03_ramp100 --run_manifest revision_materials/results/phase4_vitl14_pilot_results.jsonl --selection_split test --report_test 2>&1 | tee revision_materials/logs/phase4_vitl14_pilot/eurosat_4shot_seed1_vitl14_ohsinglora_r8_h2_lo0p03_ramp100_${RUN_STAMP}.log

@@ -102,7 +102,7 @@ write_gdrive_backup_note() {
   fi
 
   backup_status=$(status_value STATUS "$GDRIVE_BACKUP_STATUS_FILE")
-  backup_time=$(status_value TIMESTAMP_UTC "$GDRIVE_BACKUP_STATUS_FILE")
+  backup_time=$(status_value TIMESTAMP_VN "$GDRIVE_BACKUP_STATUS_FILE")
   backup_message=$(status_value MESSAGE "$GDRIVE_BACKUP_STATUS_FILE")
   backup_archive=$(status_value ARCHIVE "$GDRIVE_BACKUP_STATUS_FILE")
   backup_dest=$(status_value DESTINATION "$GDRIVE_BACKUP_STATUS_FILE")
@@ -148,8 +148,20 @@ write_progress_note() {
   report_json=$(COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" "$REPORT" --commands "$PHASE3_COMMANDS" --manifest "$PHASE3_MANIFEST" --runtime-source "$PHASE3_RUNTIME_SOURCE" 2>/dev/null || echo '{}')
   {
     echo ""
-    echo "## $(now_vn) VN ($(date -u +'%Y-%m-%d %H:%M') UTC)"
+    echo "## $(now_vn) VN"
     echo "- Status: $action"
+    if printf '%s' "$action" | grep -q 'ERROR/WATCHDOG'; then
+      latest_log=$(ls -t "$PROJECT_ROOT"/revision_materials/logs/phase3_runner_*.log "$PROJECT_ROOT"/revision_materials/logs/phase3_resume_*.log 2>/dev/null | head -1 || true)
+      if [ -n "$latest_log" ]; then
+        echo "- Latest runner log: ${latest_log#$PROJECT_ROOT/}"
+        last_fail=$(grep -E 'FAILED |Traceback|Error|ERROR|OSError|RuntimeError|returncode=' "$latest_log" 2>/dev/null | tail -3 | sed 's/^/  /' || true)
+        if [ -n "$last_fail" ]; then
+          echo "- Recent error lines:"
+          printf '%s
+' "$last_fail"
+        fi
+      fi
+    fi
     echo "- Commands: $PHASE3_COMMANDS"
     echo "- Manifest: $PHASE3_MANIFEST"
     echo "$report_json" | COST_PER_HOUR_VND="$COST_PER_HOUR_VND" "$PYTHON" -c '
@@ -166,7 +178,7 @@ if data:
     print("- Pending: {} runs".format(data["pending"]))
     print("- Rate: {}".format(data["rate"]))
     print("- Estimated remaining time: {} (~{}h)".format(data["eta_human"], data["eta_hours"]))
-    print("- Estimated finish: {} ({})".format(data.get("estimated_finish_vn", "?"), data.get("estimated_finish_utc", "?")))
+    print("- Estimated finish: {}".format(data.get("estimated_finish_vn", "?")))
     print("- Estimated remaining cost: {:,} VND".format(cost_remaining))
 else:
     print("- Report unavailable")
@@ -194,7 +206,7 @@ while true; do
         ACTION="Count saw 0 active but $n straggler train process(es) detected; SKIPPED launching runner (no kill) to avoid duplicate runs"
         straggler=1
       else
-        ACTION="No active Phase 3 process; resume requested ($PENDING runs pending)"
+        ACTION="ERROR/WATCHDOG: no active Phase 3 process while $PENDING runs are still pending; resume requested. Check latest phase3_runner/phase3_resume log for the failing command."
         did_resume=1
       fi
     elif [ "$PENDING" = "0" ]; then

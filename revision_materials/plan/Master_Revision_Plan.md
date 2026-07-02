@@ -195,17 +195,25 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Produce acceptance-critical performance evidence.
 
 **Required outputs:**
-- `main_results_manifest.jsonl`
-- `statistical_report.md`
-- `generated_tables.tex`
+- [x] `main_results_manifest.jsonl` / final rerun manifest. **Final Tier-A rerun evidence is `revision_materials/results/phase3_main_ramp100_results.jsonl`, with 144/144 completed test rows after validation-only ramp100 selection. Phase 0 recovered evidence remains in `revision_materials/results/main_results_manifest.jsonl` and is not used as the final Tier-A table source.**
+- [x] `statistical_report.md`. **Generated at `revision_materials/results/statistical_report.md` from the ramp100 Phase 3 manifest; includes full coverage audit, mean/std/95% CI, paired OrthoAdapt-minus-CLIP-LoRA deltas, parameter counts, and claim implications.**
+- [x] `generated_tables.tex`. **Generated at `revision_materials/results/generated_tables.tex`; includes 1-shot, 4-shot, 16-shot main tables and a paired-delta table from the ramp100 manifest.**
+- [x] summary CSV/Markdown. **Generated `revision_materials/results/phase3_main_ramp100_summary.csv`, `revision_materials/results/phase3_main_ramp100_summary.md`, `revision_materials/results/phase3_main_ramp100_paired_summary.csv`, and `revision_materials/results/phase3_main_ramp100_audit.md`.**
 - [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. Updated after ramp100 selection to 144 test-set commands: 8 datasets x 3 shots x 2 methods x 3 seeds. The OrthoAdapt arm uses the frozen validation winner `H=2,r=8,lambda_o=0.03,ramp_up_steps=100`; the CLIP-LoRA arm uses `r=8` for a selected-rank matched comparison. SingLoRA-CLIP is excluded from the main matrix by author decision because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline.**
 
 **Minimum Tier A tasks:**
-- [ ] Run CLIP-LoRA and OrthoAdapt. SingLoRA-CLIP is documented as excluded from the main baseline matrix; do not present it as Tier-A reviewer evidence.
-- [ ] Use all original main datasets and shots.
-- [ ] Use at least three seeds.
-- [ ] Add paired statistics and confidence intervals.
-- [ ] Include all parameter counts including gating network parameters.
+- [x] Run CLIP-LoRA and OrthoAdapt. SingLoRA-CLIP is documented as excluded from the main baseline matrix; do not present it as Tier-A reviewer evidence. **Complete in `phase3_main_ramp100_results.jsonl`: CLIP-LoRA r=8 has 72 rows and OrthoAdapt/OH-SingLoRA H=2,r=8,lambda_o=0.03,ramp100 has 72 rows.**
+- [x] Use all original main datasets and shots. **Complete: 8 datasets (`fgvc`, `eurosat`, `food101`, `oxford_pets`, `oxford_flowers`, `caltech101`, `dtd`, `ucf101`) x 3 shots (`1`, `4`, `16`).**
+- [x] Use at least three seeds. **Complete: seeds `{1,2,3}` for every dataset-shot-method cell.**
+- [x] Add paired statistics and confidence intervals. **Complete in `statistical_report.md` and `phase3_main_ramp100_paired_summary.csv`; pairing is exact by `(dataset, shot, seed)`, with 72/72 matched pairs.**
+- [x] Include all parameter counts including gating network parameters. **Complete in manifest/report/table outputs: CLIP-LoRA r=8 has 737,280 trainable parameters; OrthoAdapt H=2,r=8 has 460,800 trainable parameters. LoRA rows store `ramp_up_steps=100` only as normalized metadata from the shared CLI schema; ramp-up is not a LoRA mechanism.**
+
+**Phase 3 claim gate after ramp100 evidence:**
+- [x] Keep: validation-only hyperparameter selection was enforced before final test reporting.
+- [x] Keep: final Tier-A evidence is a complete paired 8-dataset, 3-shot, 3-seed matrix for CLIP-LoRA r=8 versus OrthoAdapt H=2,r=8,lambda_o=0.03,ramp100.
+- [x] Keep with precise wording: OrthoAdapt shows a modest positive average paired delta in the ramp100 final matrix while using fewer trainable parameters than CLIP-LoRA r=8.
+- [x] Weaken/remove: broad state-of-the-art, large-gain, or consistent-superiority claims.
+- [x] Weaken/remove until Phase 4 evidence exists: causal robustness claims, rank-fragmentation explanations, and mechanistic claims about head-count behavior.
 
 **Scope additions if feasible:**
 - [ ] Add SUN397 and StanfordCars.
@@ -219,20 +227,28 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Support mechanistic claims only where diagnostics justify them.
 
 **Required outputs:**
-- diagnostic manifests
-- spectral-analysis report
-- robustness report
-- backbone-scaling report
+- [x] diagnostic manifests. **Generated existing-diagnostic and checkpoint-diagnostic artifacts: `phase4_existing_diagnostics.csv`, `phase4_checkpoint_diagnostics.jsonl`, and `phase4_spectrum_manifest.jsonl`. Robustness and ViT-L/14 manifests are generated by server commands and remain pending until those jobs finish.**
+- [x] spectral-analysis report. **Generated `revision_materials/results/phase4_spectrum_report.md` and figures in `revision_materials/results/figures/phase4_spectrum/` from paired Phase 3 ramp100 checkpoints. This is descriptive evidence only, not causal proof.**
+- [ ] robustness report. **Infrastructure generated: `revision_materials/scripts/phase4_eval_robustness.py`, `phase4_robustness_commands.sh`, and `phase4_aggregate_robustness.py`. Server run is still required to produce `phase4_robustness_manifest.jsonl`, `phase4_robustness_summary.csv`, and `phase4_robustness_report.md`.**
+- [ ] backbone-scaling report. **ViT-L/14 pilot/subset commands generated in `phase4_vitl14_pilot_commands.sh` and `phase4_vitl14_commands.sh`; `phase4_backbone_scaling_report.md` currently records pending/deferred status until pilot/subset results exist.**
+- [x] Phase 4 run instructions. **Created `revision_materials/plan/phase4_server_run_instructions.md` with robustness and ViT-L/14 server commands and claim gates.**
 
 **Tasks:**
-- [ ] Run fixed-total-rank and fixed-rank-per-head H studies.
-- [ ] Compare raw orthogonality sum vs pair-normalized mean.
-- [ ] Report head norms and subspace overlap metrics.
-- [ ] Replace invalid spectral figure with rank-consistent metrics.
-- [ ] Run ViT-L/14 subset if feasible.
-- [ ] Run robustness with deterministic paired corruptions and exact transform parameters.
+- [x] Run fixed-total-rank and fixed-rank-per-head H studies. **Existing validation evidence was consolidated in `phase4_existing_diagnostics.md/csv`: ramp100 validation sweep covers H/r/lambda over EuroSAT+Caltech101, 4-shot, seeds {1,2,3}; W3 adds H=1 for r={2,4}. This supports only configuration-sensitivity language.**
+- [x] Compare raw orthogonality sum vs pair-normalized mean. **Checkpoint diagnostics over 72 final OrthoAdapt checkpoints compute raw orthogonality and normalized subspace-overlap metrics; summarized in `phase4_orthogonality_report.md`.**
+- [x] Report head norms and subspace overlap metrics. **Generated `phase4_head_overlap_report.md` from `phase4_checkpoint_diagnostics.jsonl`; 72/72 OrthoAdapt Phase 3 ramp100 checkpoints processed.**
+- [x] Replace invalid spectral figure with rank-consistent metrics. **Generated paired spectrum diagnostics for all 8 datasets, shot=4, seed=1, vision layer 11, q/v projections. Old spectrum figures remain legacy only.**
+- [ ] Run ViT-L/14 subset if feasible. **Pilot and subset command scripts are ready; run pilot first and continue only if runtime is acceptable.**
+- [ ] Run robustness with deterministic paired corruptions and exact transform parameters. **Deterministic evaluator and 144-job command script are ready; server run remains pending.**
 
 **Claim rule:** Do not claim rank fragmentation or orthogonality-caused robustness unless these diagnostics support it.
+
+**Phase 4 claim gate after local diagnostics:**
+- [x] Keep: H/r/lambda behavior is configuration-dependent under validation-only diagnostics.
+- [x] Keep: final OrthoAdapt checkpoints learn low-overlap head tensors, descriptively.
+- [x] Keep with caution: spectrum diagnostics may be used only as descriptive, checkpoint-backed evidence for the selected subset.
+- [x] Weaken/remove until robustness server run completes: robustness claims and orthogonality-causes-robustness wording.
+- [x] Weaken/remove until ViT-L/14 subset completes: backbone-scaling claims.
 
 ---
 

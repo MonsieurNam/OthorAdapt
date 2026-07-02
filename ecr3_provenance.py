@@ -164,10 +164,10 @@ def build_run_record(
         },
         "status": status,
         "evidence_gate": {
-            "seed_status": "single_seed" if seed is not None else "seed_missing",
+            "seed_status": "row_seed_recorded" if seed is not None else "seed_missing",
             "split_status": "split_hash_recorded" if split_hashes else "split_hash_missing",
             "verified_tier_a": False,
-            "reason": "Phase 1 run record; requires seed2/seed3 and validation protocol before Tier-A verification",
+            "reason": "Single run record; manifest-level coverage audit is required before Tier-A verification",
         },
     }
 

@@ -73,7 +73,7 @@ class ECR3ProvenanceTest(unittest.TestCase):
         self.assertEqual(record["checkpoint"]["sha256"], "ABC123")
         self.assertEqual(record["git_revision"], "TESTREV")
         self.assertEqual(record["metrics"]["trainable_parameters"], 42)
-        self.assertEqual(record["evidence_gate"]["seed_status"], "single_seed")
+        self.assertEqual(record["evidence_gate"]["seed_status"], "row_seed_recorded")
         self.assertEqual(record["evidence_gate"]["split_status"], "split_hash_recorded")
 
     def test_write_jsonl_record_appends_valid_json(self):

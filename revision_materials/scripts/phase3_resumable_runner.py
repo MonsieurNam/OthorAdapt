@@ -99,8 +99,12 @@ def _iter_manifest_rows(path):
 
 
 def seconds_per_iteration(manifest_paths):
-    samples = []
+    # Prefer the first manifest that contains runtime samples. This avoids mixing
+    # current Phase 3 runtime with fallback validation-sweep runtime after Phase 3
+    # rows already exist. Validation rows can have different overhead/data mix and
+    # previously inflated ETA/cost estimates.
     for manifest_path in manifest_paths:
+        samples = []
         for record in _iter_manifest_rows(manifest_path) or []:
             runtime = _float_or_none(
                 _nested(record, "metrics.runtime_seconds")
@@ -109,9 +113,9 @@ def seconds_per_iteration(manifest_paths):
             iterations = _float_or_none(_nested(record, "metrics.train_total_iterations"))
             if runtime is not None and iterations is not None and runtime >= 0 and iterations > 0:
                 samples.append(runtime / iterations)
-    if not samples:
-        return None
-    return sum(samples) / len(samples)
+        if samples:
+            return sum(samples) / len(samples)
+    return None
 
 
 def completed_filenames(manifest_path):

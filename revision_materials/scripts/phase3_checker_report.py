@@ -24,6 +24,7 @@ import phase3_resumable_runner as runner  # noqa: E402
 VN_TZ = timezone(timedelta(hours=7))
 
 
+
 def format_finish_time(dt):
     return dt.strftime("%Y-%m-%d %H:%M")
 
@@ -80,7 +81,7 @@ def build_report(
         "eta_human": runner.format_duration(eta_seconds_int),
         "eta_hours": round(eta_hours, 1),
         "cost_remaining_vnd": int(round(eta_hours) * cost_per_hour_vnd),
-        "estimated_finish_utc": f"{format_finish_time(finish_utc)} UTC",
+        "estimated_finish": f"{format_finish_time(finish_vn)} VN",
         "estimated_finish_vn": f"{format_finish_time(finish_vn)} VN",
         "rate": rate,
     }

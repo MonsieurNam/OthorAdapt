@@ -62,8 +62,8 @@ def get_arguments():
                         help='[LoRA only] Dropout rate applied before the LoRA module.')
 
     # SingLoRA-specific arguments
-    parser.add_argument('--ramp_up_steps', type=int, default=1000,
-                        help='[SingLoRA only] Number of ramp-up steps (T) for the adapter.')
+    parser.add_argument('--ramp_up_steps', type=int, default=100,
+                        help='[SingLoRA only] Number of ramp-up steps (T) for the adapter. Default: 100.')
 
 
     parser.add_argument('--save_path', default=None, help='Path to save the adapter modules after training. Not saved if None.')
