@@ -10,6 +10,8 @@ if str(SCRIPTS) not in sys.path:
 
 from phase4_aggregate_robustness import aggregate
 from phase4_eval_robustness import SCHEMA_VERSION, severity_spec
+from phase4_generate_robustness_commands import command_for
+from phase4_make_resume_commands import make_resume
 
 
 class Phase4RobustnessTest(unittest.TestCase):
@@ -52,6 +54,65 @@ class Phase4RobustnessTest(unittest.TestCase):
     def test_aggregate_fails_when_manifest_is_incomplete(self):
         with self.assertRaisesRegex(SystemExit, "Expected 576"):
             aggregate([])
+
+    def test_phase4_commands_use_large_eval_loader(self):
+        row = {
+            "checkpoint": {"path": "revision_materials/checkpoints/phase3_main/example.pt"},
+            "config": {
+                "adapter": "lora",
+                "dataset": "eurosat",
+                "shots": 16,
+                "seed": 1,
+                "filename": "eurosat_16shot_seed1_test_lora_r8",
+                "backbone": "ViT-B/16",
+                "r": 8,
+                "alpha": 1,
+                "position": "all",
+                "encoder": "both",
+                "params": ["q", "k", "v"],
+            },
+        }
+
+        command = command_for(row)
+
+        self.assertIn("--batch_size 256", command)
+        self.assertIn("--num_workers 8", command)
+
+    def test_resume_skips_jobs_completed_in_existing_logs(self):
+        import tempfile
+
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_path = Path(tmp)
+            commands = tmp_path / "commands.sh"
+            manifest = tmp_path / "missing_manifest.jsonl"
+            out = tmp_path / "resume.sh"
+            log_dir = tmp_path / "logs"
+            log_dir.mkdir()
+            commands.write_text(
+                "\n".join(
+                    [
+                        "#!/usr/bin/env bash",
+                        "set -euo pipefail",
+                        "python phase4_eval.py --filename completed_job",
+                        "python phase4_eval.py --filename pending_job",
+                        "",
+                    ]
+                ),
+                encoding="utf-8",
+            )
+            (log_dir / "completed_job_20260703_010101.log").write_text(
+                '{"job_id":"completed_job","rows":4,"runtime_seconds":12.3}\n',
+                encoding="utf-8",
+            )
+
+            completed, skipped, pending = make_resume(commands, manifest, out, log_dir=log_dir)
+
+            self.assertEqual(completed, 1)
+            self.assertEqual(skipped, 1)
+            self.assertEqual(pending, 1)
+            resume_text = out.read_text(encoding="utf-8")
+            self.assertNotIn("--filename completed_job", resume_text)
+            self.assertIn("--filename pending_job", resume_text)
 
 
 if __name__ == "__main__":

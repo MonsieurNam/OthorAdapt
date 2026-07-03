@@ -217,8 +217,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--encoder", default="both")
     parser.add_argument("--params", nargs="+", default=["q", "k", "v"])
     parser.add_argument("--dropout_rate", type=float, default=0.25)
-    parser.add_argument("--batch_size", type=int, default=128)
-    parser.add_argument("--num_workers", type=int, default=0)
+    parser.add_argument("--batch_size", type=int, default=256)
+    parser.add_argument("--num_workers", type=int, default=8)
     args = parser.parse_args(argv)
 
     set_seed(args.seed)

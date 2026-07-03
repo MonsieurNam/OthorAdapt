@@ -44,8 +44,8 @@ def command_for(row: dict) -> str:
         f"--position {cfg['position']}",
         f"--encoder {cfg['encoder']}",
         "--params " + " ".join(cfg["params"]),
-        "--batch_size 128",
-        "--num_workers 0",
+        "--batch_size 256",
+        "--num_workers 8",
     ]
     if method == "ohsinglora":
         flags += [
