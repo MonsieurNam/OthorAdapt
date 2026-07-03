@@ -4,6 +4,26 @@ PYTHON=${PYTHON:-python3}
 DATA_ROOT=${DATA_ROOT:-/root/DATA}
 RUN_STAMP=${RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}
 
+if [ ! -f "${DATA_ROOT}/Food101/split_zhou_Food101.json" ]; then
+  for candidate in \
+    /kaggle/input/datasets/nguyenngonhatnam/data-image-classification-collection \
+    /kaggle/input/*/data-image-classification-collection \
+    /kaggle/input/*; do
+    if [ -f "${candidate}/Food101/split_zhou_Food101.json" ]; then
+      DATA_ROOT="${candidate}"
+      break
+    fi
+  done
+fi
+if [ ! -f "${DATA_ROOT}/Food101/split_zhou_Food101.json" ]; then
+  echo "ERROR: DATA_ROOT does not point to the 8-dataset root: ${DATA_ROOT}" >&2
+  echo "Expected: ${DATA_ROOT}/Food101/split_zhou_Food101.json" >&2
+  echo "On Kaggle, set DATA_ROOT=/kaggle/input/datasets/nguyenngonhatnam/data-image-classification-collection" >&2
+  exit 2
+fi
+export DATA_ROOT
+echo "Using DATA_ROOT=${DATA_ROOT}"
+
 # Generated from phase3_main_ramp100_results.jsonl.
 # Each command evaluates one checkpoint over severity 0,1,2,3 and appends four JSONL rows.
 

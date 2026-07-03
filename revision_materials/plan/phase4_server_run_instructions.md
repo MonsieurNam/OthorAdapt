@@ -1,6 +1,8 @@
 # Phase 4 Server Run Instructions
 
 These commands assume the project is at `/root/OthorAdapt` and datasets are at `/root/DATA`.
+On Kaggle, the dataset root is usually a read-only input directory such as
+`/kaggle/input/datasets/nguyenngonhatnam/data-image-classification-collection`.
 
 ## 1. Already generated locally
 
@@ -25,6 +27,20 @@ export RUN_STAMP=$(date +%Y%m%d_%H%M%S)
 
 bash revision_materials/scripts/phase4_robustness_commands.sh
 ```
+
+Kaggle resume example:
+
+```bash
+cd /kaggle/working/OthorAdapt
+python revision_materials/scripts/phase4_make_resume_commands.py
+DATA_ROOT=/kaggle/input/datasets/nguyenngonhatnam/data-image-classification-collection \
+PYTHON=python3 \
+bash revision_materials/scripts/phase4_robustness_resume.sh
+```
+
+The robustness command scripts now validate `DATA_ROOT` before running. If the
+given path does not contain `Food101/split_zhou_Food101.json`, they also try to
+auto-detect the Kaggle input root before failing with an explicit error.
 
 Expected raw output:
 
