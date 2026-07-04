@@ -1,6 +1,6 @@
 """Create a Phase 4 robustness resume script by skipping completed jobs.
 
-Completion is determined from phase4_robustness_manifest.jsonl. A job is
+Completion is determined from the selected Phase 4 robustness manifest. A job is
 considered complete only when it has completed rows for severities 0,1,2,3.
 """
 
@@ -15,9 +15,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_COMMANDS = ROOT / "revision_materials" / "scripts" / "phase4_robustness_commands.sh"
-DEFAULT_MANIFEST = ROOT / "revision_materials" / "results" / "phase4_robustness_manifest.jsonl"
+DEFAULT_MANIFEST = ROOT / "revision_materials" / "results" / "phase4_robustness_manifest_fixed.jsonl"
 DEFAULT_OUT = ROOT / "revision_materials" / "scripts" / "phase4_robustness_resume.sh"
-DEFAULT_LOG_DIR = ROOT / "revision_materials" / "logs" / "phase4_robustness"
+DEFAULT_LOG_DIR = ROOT / "revision_materials" / "logs" / "phase4_robustness_fixed"
 EXPECTED_SEVERITIES = {0, 1, 2, 3}
 
 

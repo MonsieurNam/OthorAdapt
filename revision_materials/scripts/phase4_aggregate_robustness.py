@@ -13,6 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS = ROOT / "revision_materials" / "results"
 DEFAULT_MANIFEST = RESULTS / "phase4_robustness_manifest.jsonl"
+DEFAULT_REFERENCE = RESULTS / "phase3_main_ramp100_results.jsonl"
 OUT_CSV = RESULTS / "phase4_robustness_summary.csv"
 OUT_REPORT = RESULTS / "phase4_robustness_report.md"
 
@@ -53,6 +54,76 @@ def summary(values: list[float]) -> dict:
 
 def fmt(value: float) -> str:
     return f"{value:.3f}"
+
+
+def phase3_key(row: dict) -> tuple[str, int, int, str]:
+    cfg = row.get("config", {})
+    dataset = row.get("dataset") if isinstance(row.get("dataset"), str) else cfg.get("dataset")
+    shot = row.get("shot", row.get("shots", cfg.get("shot", cfg.get("shots"))))
+    seed = row.get("seed", cfg.get("seed"))
+    method = row.get("method") or row.get("adapter") or cfg.get("adapter")
+    if method in {"orthoadapt", "ohsinglora", "OH-SingLoRA"}:
+        method = "ohsinglora"
+    elif method in {"lora", "CLIP-LoRA"}:
+        method = "lora"
+    return (dataset, int(shot), int(seed), method)
+
+
+def phase3_accuracy(row: dict) -> float:
+    for key in ["test_accuracy", "accuracy", "acc"]:
+        if key in row and row[key] not in (None, ""):
+            return float(row[key])
+    metrics = row.get("metrics", {})
+    for key in ["test_accuracy", "accuracy", "acc"]:
+        if key in metrics and metrics[key] not in (None, ""):
+            return float(metrics[key])
+    raise KeyError("No accuracy field found in Phase 3 reference row")
+
+
+def clean_consistency_audit(rows: list[dict], reference_path: Path, tolerance: float = 1.0) -> dict:
+    if not reference_path.exists():
+        return {"status": "no_reference", "reference": str(reference_path), "message": "Phase 3 reference manifest not found."}
+
+    reference = {phase3_key(row): phase3_accuracy(row) for row in load_rows(reference_path)}
+    comparisons = []
+    missing = []
+    for row in rows:
+        if int(row["severity"]) != 0:
+            continue
+        key = (row["dataset"], int(row["shot"]), int(row["seed"]), row["method"])
+        if key not in reference:
+            missing.append(key)
+            continue
+        robust_acc = float(row["metrics"]["accuracy"])
+        comparisons.append({"key": key, "diff": robust_acc - reference[key]})
+
+    by_method = defaultdict(list)
+    failures = []
+    for item in comparisons:
+        by_method[item["key"][3]].append(item["diff"])
+        if abs(item["diff"]) > tolerance:
+            failures.append(item)
+
+    method_stats = {}
+    for method, diffs in by_method.items():
+        method_stats[method] = {
+            "n": len(diffs),
+            "mean_diff": mean(diffs),
+            "min_diff": min(diffs),
+            "max_diff": max(diffs),
+            "failures": sum(abs(diff) > tolerance for diff in diffs),
+        }
+
+    return {
+        "status": "pass" if not missing and not failures else "fail",
+        "reference": reference_path.as_posix(),
+        "tolerance": tolerance,
+        "comparisons": len(comparisons),
+        "missing_reference": len(missing),
+        "failures": len(failures),
+        "method_stats": method_stats,
+        "failure_examples": failures[:10],
+    }
 
 
 def aggregate(rows: list[dict]) -> tuple[list[dict], dict]:
@@ -117,10 +188,19 @@ def write_csv(pair_rows: list[dict]) -> None:
             )
 
 
-def write_report(pair_rows: list[dict], audit: dict) -> None:
+def write_report(pair_rows: list[dict], audit: dict, clean_audit: dict) -> None:
     by_sev = defaultdict(list)
     for row in pair_rows:
         by_sev[row["severity"]].append(row)
+    severity_summaries = {}
+    for severity in SEVERITIES:
+        rows = by_sev[severity]
+        severity_summaries[severity] = {
+            "delta": summary([row["delta_oh_minus_lora"] for row in rows]),
+            "lora_drop": mean([row["lora_drop"] for row in rows]),
+            "oh_drop": mean([row["ohsinglora_drop"] for row in rows]),
+            "drop_delta": mean([row["drop_delta_oh_minus_lora"] for row in rows]),
+        }
     lines = [
         "# Phase 4 Robustness Report",
         "",
@@ -128,25 +208,66 @@ def write_report(pair_rows: list[dict], audit: dict) -> None:
         "",
         f"- Severity rows: {audit['manifest_rows']} / {audit['expected_rows']}",
         "- Paired by dataset, shot, seed, and severity.",
+        f"- Clean consistency gate: `{clean_audit['status']}` against `revision_materials/results/phase3_main_ramp100_results.jsonl`.",
         "",
         "| Severity | n pairs | Mean delta OH-LoRA | 95% CI | Mean LoRA drop | Mean OH drop | Drop delta OH-LoRA |",
         "|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for severity in SEVERITIES:
-        rows = by_sev[severity]
-        delta = summary([row["delta_oh_minus_lora"] for row in rows])
+        stats = severity_summaries[severity]
+        delta = stats["delta"]
         lines.append(
             f"| {severity} | {delta['n']} | {fmt(delta['mean'])} | [{fmt(delta['ci95_low'])}, {fmt(delta['ci95_high'])}] | "
-            f"{fmt(mean([row['lora_drop'] for row in rows]))} | {fmt(mean([row['ohsinglora_drop'] for row in rows]))} | "
-            f"{fmt(mean([row['drop_delta_oh_minus_lora'] for row in rows]))} |"
+            f"{fmt(stats['lora_drop'])} | {fmt(stats['oh_drop'])} | "
+            f"{fmt(stats['drop_delta'])} |"
         )
+    clean_delta = severity_summaries[0]["delta"]
+    severe_delta = severity_summaries[3]["delta"]
+    severe_drop_delta = severity_summaries[3]["drop_delta"]
+    lines += [
+        "",
+        "## Clean Consistency Audit",
+        "",
+    ]
+    if clean_audit["status"] == "no_reference":
+        lines.append(f"- {clean_audit['message']}")
+    else:
+        lines.append(
+            f"- Compared severity-0 rows against Phase 3 test accuracy with tolerance {clean_audit['tolerance']} pp: "
+            f"{clean_audit['comparisons']} comparisons, {clean_audit['failures']} failures, {clean_audit['missing_reference']} missing references."
+        )
+        lines += [
+            "",
+            "| Method | n | Mean clean-minus-Phase3 | Min | Max | Failures > tolerance |",
+            "|---|---:|---:|---:|---:|---:|",
+        ]
+        for method in sorted(clean_audit["method_stats"]):
+            stats = clean_audit["method_stats"][method]
+            lines.append(
+                f"| {method} | {stats['n']} | {fmt(stats['mean_diff'])} | {fmt(stats['min_diff'])} | "
+                f"{fmt(stats['max_diff'])} | {stats['failures']} |"
+            )
     lines += [
         "",
         "## Claim Gate",
         "",
-        "- Keep robustness claims only if paired deltas and drop deltas are favorable with uncertainty reported.",
-        "- If severity-specific results are mixed, report robustness as mixed and avoid causal orthogonality wording.",
     ]
+    if clean_audit["status"] == "fail":
+        lines += [
+            "- Do not use this robustness manifest for scientific claims yet. Although coverage is structurally complete, the clean severity-0 check does not reproduce Phase 3 accuracy.",
+            "- The current failure pattern indicates an evaluator/checkpoint-loading mismatch, especially for OH-SingLoRA. Fix the evaluator and rerun robustness before reporting any robustness numbers.",
+            "- Reviewer-facing wording for now: paired robustness evaluation was audited but did not pass the clean-consistency gate, so robustness gains are removed/deferred.",
+        ]
+    else:
+        lines += [
+            f"- Do not keep the original robustness-improvement claim. At clean severity 0, OH-SingLoRA is lower than CLIP-LoRA by {fmt(clean_delta['mean'])} pp "
+            f"(95% CI [{fmt(clean_delta['ci95_low'])}, {fmt(clean_delta['ci95_high'])}]).",
+            f"- Under severe corruption, OH-SingLoRA remains lower by {fmt(severe_delta['mean'])} pp "
+            f"(95% CI [{fmt(severe_delta['ci95_low'])}, {fmt(severe_delta['ci95_high'])}]).",
+            f"- The severe corruption drop delta is {fmt(severe_drop_delta)} pp, meaning OH-SingLoRA loses fewer points relative to its own clean score, "
+            "but this must not be reported as superior robust accuracy because the clean baseline is substantially lower.",
+            "- Reviewer-facing wording: robustness is not supported by the paired Phase 4 evaluation; remove quantitative robustness-gain claims and keep only a limitation/future-work statement.",
+        ]
     OUT_REPORT.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -156,8 +277,9 @@ def main(argv: list[str] | None = None) -> None:
     args = parser.parse_args(argv)
     rows = load_rows(Path(args.manifest))
     pair_rows, audit = aggregate(rows)
+    clean_audit = clean_consistency_audit(rows, DEFAULT_REFERENCE)
     write_csv(pair_rows)
-    write_report(pair_rows, audit)
+    write_report(pair_rows, audit, clean_audit)
     print(OUT_CSV.relative_to(ROOT).as_posix())
     print(OUT_REPORT.relative_to(ROOT).as_posix())
 

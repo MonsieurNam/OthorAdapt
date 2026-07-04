@@ -1,34 +1,42 @@
 # Unresolved Numbers
 
-Last updated: 2026-06-16
+Last updated: 2026-07-04
 
 This file lists manuscript numbers and claims that cannot currently be treated as verified. After the raw-evidence update, logs and checkpoints are no longer globally missing: 724 raw logs, 5 CSV summaries, 20 zip archives, 153 loadable checkpoint files, 1 workbook, and 11 figure/source assets are recorded in `phase0_raw_artifact_manifest.csv`.
 
-The remaining blocker is evidence quality, not evidence absence: the recovered artifacts have now been normalized into Phase 0 evidence manifests, but they still lack explicit split hashes, seed2/seed3 provenance, paired robustness manifests, and final validation/test table-generation scripts.
+The original Phase 0 blockers were evidence quality rather than evidence absence. Several acceptance-critical items have since been superseded by manifest-backed reruns:
+
+- final validation selection: `validation_sweep_ramp100_results.jsonl` and `selected_config_ramp100.md`
+- final main accuracy matrix: `phase3_main_ramp100_results.jsonl`, `statistical_report.md`, and `generated_tables.tex`
+- spectrum diagnostics: `phase4_spectrum_manifest.jsonl` and `phase4_spectrum_report.md`
+- same-parameter diagnostic: `phase3b_same_param_ramp100_report.md`
+- bounded ViT-L/14 subset: `phase4_backbone_scaling_report.md`
+
+Robustness remains unresolved for final claims: `phase4_robustness_manifest.jsonl` is structurally complete with 576/576 severity rows and paired method keys, but `phase4_robustness_report.md` marks the run invalid because severity-0 OH-SingLoRA accuracy does not reproduce the corresponding Phase 3 clean test accuracy. A fixed rerun is required before any robustness number can be reported.
 
 ## Critical Unresolved Numbers
 
 | ID | Number / claim | Location | Current source | Status | Required resolution |
 |---|---|---|---|---|---|
-| UNR-001 | `Training Iterations = 500` | `tab:hyperparams`, LaTeX line 454 | Manuscript table; source code uses shot-scaled total iterations | SOURCE-CODE_INSPECTION_REQUIRED | Rewrite as 500 base steps per shot: 500/2000/8000 total steps for 1/4/16-shot. |
-| UNR-002 | `Random Seeds = 1` | `tab:hyperparams`, LaTeX line 456 | Manuscript table; recovered checkpoints are path-derived `seed1`; logs do not expose parseable seed IDs in filenames | UNVERIFIED_RERUN_REQUIRED | Replace with seeds `{1,2,3}` only after Tier-A rerun or recovery of seed2/seed3 artifacts; do not claim current recovered evidence supports 3-seed averages. |
-| UNR-003 | 1-shot avg `73.48` OrthoAdapt vs `73.26` CLIP-LoRA | `tab:1` / rendered Table 2 | Workbook-derived value; recovered 1-shot logs; some seed1 checkpoints recovered | UNVERIFIED_RERUN_REQUIRED | Normalize matching logs into manifest; re-evaluate checkpoints where needed; rerun/recover seeds 2-3; generate mean +/- std and paired statistics. |
-| UNR-004 | 4-shot avg `79.96` OrthoAdapt vs `79.53` CLIP-LoRA | `tab:2` / rendered Table 3 | Workbook-derived value; recovered 4-shot logs/CSVs; some seed1 checkpoints recovered | UNVERIFIED_RERUN_REQUIRED | Normalize logs and CSVs; final table must use validation-selected config only and include 3-seed manifest. |
-| UNR-005 | 4-shot EuroSAT `89.06` vs `87.49`, gain `+1.57` | `tab:2`, Figure combined chart, text line 524 | Workbook-derived value, rendered figure, recovered EuroSAT logs, and EuroSAT seed1 checkpoints | UNVERIFIED_RERUN_REQUIRED | Map exact log/checkpoint/config; verify split and seed; report statistical uncertainty or rerun. |
-| UNR-006 | 16-shot avg `84.84` OrthoAdapt vs `84.52` CLIP-LoRA | `tab:3` / rendered Table 4 | Workbook-derived value; many 16-shot logs and seed1 checkpoints recovered | UNVERIFIED_RERUN_REQUIRED | Normalize recovered 16-shot logs; re-evaluate checkpoints where needed; rerun/recover seeds 2-3 before claiming mean/variance. |
-| UNR-007 | Aircraft 16-shot `54.97` for both CLIP-LoRA and OrthoAdapt | `tab:3`, LaTeX lines 570 and 572 | Workbook/manuscript table; no aircraft checkpoint or log path observed in recovered manifest | UNVERIFIED_RERUN_REQUIRED | Recover/rerun Aircraft checkpoint/log; if identical, footnote; if copy error, correct. |
-| UNR-008 | `H=2` best / `H=4` rank fragmentation | Figure 5a, `tab:4`, text lines 626-628 | Workbook-derived values, rendered figure, recovered head-scan logs/CSV, and some ablation checkpoints | UNVERIFIED_RERUN_REQUIRED | Normalize ablation evidence; move selection to validation split; add diagnostics before causal rank-fragmentation wording. |
-| UNR-009 | EuroSAT lambda values `88.07`, `88.64`, `88.57`, `88.59`, `88.52` | `tab:5`, text line 633 | Workbook-derived sensitivity sheet plus recovered ablation logs/CSVs and some checkpoints | UNVERIFIED_RERUN_REQUIRED | Reconcile exact configs across table/figure/workbook/logs; rerun validation-only sweep as needed; fix decimal commas and labels. |
-| UNR-010 | Robustness gain `+3.6%` / `46.3% vs 42.7%` | Robustness text line 644; Figure 6 | Rendered figure and checkpoint evidence, but no robustness log/corruption manifest | UNVERIFIED_RERUN_REQUIRED | Repair paired corruption protocol, re-evaluate from recovered checkpoints where possible, and reconcile medium vs severe wording. |
-| UNR-011 | OxfordPets robustness gain `+1.6%` | Robustness text line 644 | Rendered figure and OxfordPets checkpoint evidence, but no robustness log/corruption manifest | UNVERIFIED_RERUN_REQUIRED | Same robustness re-evaluation; report exact severity and CI if possible. |
-| UNR-012 | Spectrum singular values / flatter tail above `10^-1` | Spectral text lines 649-655; Figure 7 | Recovered spectrum PNG/drawio assets and checkpoint evidence | UNVERIFIED_RERUN_REQUIRED | Regenerate from exact selected checkpoint; record checkpoint hash, matrix definition, matrix shape/rank, layer, module, and SVD script version. |
+| UNR-001 | `Training Iterations = 500` | `tab:hyperparams`, LaTeX line 454 | Source-code inspection and final manuscript protocol text | RESOLVED_IN_MANUSCRIPT | Manuscript now describes inherited CLIP-LoRA-style base iterations and shot-scaled total steps rather than an ambiguous single `500` claim. |
+| UNR-002 | `Random Seeds = 1` | `tab:hyperparams`, LaTeX line 456 | `phase3_main_ramp100_results.jsonl` | RESOLVED_BY_RERUN | Final main tables use seeds `{1,2,3}` from the 144-row Phase 3 ramp100 manifest. |
+| UNR-003 | 1-shot avg `73.48` OrthoAdapt vs `73.26` CLIP-LoRA | `tab:1` / rendered Table 2 | `phase3_main_ramp100_results.jsonl`; `generated_tables.tex` | RESOLVED_BY_RERUN | Final 1-shot table now uses manifest-backed values: CLIP-LoRA 73.23, OrthoAdapt 74.05. |
+| UNR-004 | 4-shot avg `79.96` OrthoAdapt vs `79.53` CLIP-LoRA | `tab:2` / rendered Table 3 | `phase3_main_ramp100_results.jsonl`; `generated_tables.tex` | RESOLVED_BY_RERUN | Final 4-shot table now uses manifest-backed values: CLIP-LoRA 79.07, OrthoAdapt 79.47. |
+| UNR-005 | 4-shot EuroSAT `89.06` vs `87.49`, gain `+1.57` | `tab:2`, Figure combined chart, text line 524 | `phase3_main_ramp100_results.jsonl`; `generated_tables.tex` | RESOLVED_BY_RERUN | Final 4-shot EuroSAT values are CLIP-LoRA 84.36 and OrthoAdapt 85.78; legacy values are no longer final claims. |
+| UNR-006 | 16-shot avg `84.84` OrthoAdapt vs `84.52` CLIP-LoRA | `tab:3` / rendered Table 4 | `phase3_main_ramp100_results.jsonl`; `generated_tables.tex` | RESOLVED_BY_RERUN | Final 16-shot table now uses manifest-backed values: CLIP-LoRA 85.17, OrthoAdapt 85.02. |
+| UNR-007 | Aircraft 16-shot `54.97` for both CLIP-LoRA and OrthoAdapt | `tab:3`, LaTeX lines 570 and 572 | `phase3_main_ramp100_results.jsonl`; `generated_tables.tex` | RESOLVED_BY_RERUN | Final Aircraft 16-shot values are CLIP-LoRA 56.99 and OrthoAdapt 56.63. |
+| UNR-008 | `H=2` best / `H=4` rank fragmentation | Figure 5a, `tab:4`, text lines 626-628 | `phase4_existing_diagnostics.md/csv`; `w3_headcount_h1_ramp100_results.jsonl`; checkpoint diagnostics | RESOLVED_WITH_WEAKENED_CLAIM | Manuscript uses configuration-dependent capacity/routing wording; no causal rank-fragmentation law is claimed. |
+| UNR-009 | EuroSAT lambda values `88.07`, `88.64`, `88.57`, `88.59`, `88.52` | `tab:5`, text line 633 | Validation diagnostics and manuscript sensitivity table | RESOLVED_AS_DIAGNOSTIC | Decimal separators were fixed; retained table is labeled as validation/sensitivity diagnostic and not used for final EuroSAT test claims. |
+| UNR-010 | Robustness gain `+3.6%` / `46.3% vs 42.7%` | Robustness text line 644; Figure 6 | `phase4_robustness_manifest.jsonl`; `phase4_robustness_report.md` clean-consistency audit | DOWNGRADED_CLEAN_GATE_FAILURE | Manuscript removes/caveats quantitative robustness claim. Need a fixed paired rerun that passes severity-0 reproduction before claiming robustness. |
+| UNR-011 | OxfordPets robustness gain `+1.6%` | Robustness text line 644 | `phase4_robustness_manifest.jsonl` is unpaired | DOWNGRADED_PENDING_PAIRED_AGGREGATION | Same as UNR-010; no final robustness claim allowed. |
+| UNR-012 | Spectrum singular values / flatter tail above `10^-1` | Spectral text lines 649-655; Figure 7 | `phase4_spectrum_manifest.jsonl`; `phase4_spectrum_report.md` | RESOLVED_DESCRIPTIVE_ONLY | Spectrum diagnostics were regenerated with checkpoint metadata and are used descriptively, not causally. |
 | UNR-013 | Gating specialization: Highway vs Forest heads | Figure 8 and text line 670 | Recovered gating figure/drawio assets and checkpoint evidence | UNVERIFIED_RERUN_REQUIRED | Regenerate with selected checkpoint hash, sample manifest, class labels, layer/head metadata, and gating-weight export. |
-| UNR-014 | Parameter counts such as `184320`, `276480`, `368640` | Workbook sheets and manuscript claims | Workbook-derived value, recovered CSV `params` columns, and source code | SOURCE-CODE_INSPECTION_REQUIRED | Recompute parameter counts including gating network and log in manifests. |
-| UNR-015 | "11 state-of-the-art baselines" wording | Figure combined caption line 487 | Manuscript caption | SOURCE-CODE_INSPECTION_REQUIRED | Verify baseline count and remove SOTA wording unless evidence and citations support it. |
-| UNR-016 | "significant" improvement wording | Abstract/introduction/results | Manuscript prose | UNVERIFIED_RERUN_REQUIRED | Use only after paired statistics support it; otherwise replace with "modest" or "observed". |
-| UNR-017 | "orthogonality causes robustness" | Robustness and spectral sections | Manuscript prose | UNVERIFIED_RERUN_REQUIRED | Require orthogonality ablation under paired corruptions; otherwise weaken to correlation/possible explanation. |
-| UNR-018 | PSD-escape / "overcomes PSD bottleneck" framing | Figure 2 and Method | Manuscript prose | SOURCE-CODE_INSPECTION_REQUIRED | Rewrite; softmax mixtures of PSD heads remain PSD. |
-| UNR-019 | Missing ImageNet/SUN397/StanfordCars results | Experimental setup and reviewer R2-5d | Dataset loaders only; no recovered logs/checkpoints for these datasets | UNVERIFIED_RERUN_REQUIRED | Execute pilot gate; run if feasible or state limitation. |
+| UNR-014 | Parameter counts such as `184320`, `276480`, `368640` | Workbook sheets and manuscript claims | Final manifests and reports | RESOLVED_BY_MANIFEST | Final main comparison reports CLIP-LoRA r=8 as 737,280 parameters and OrthoAdapt H=2,r=8 as 460,800 parameters; same-parameter diagnostic uses 184,320. |
+| UNR-015 | "11 state-of-the-art baselines" wording | Figure combined caption line 487 | Manuscript caption | RESOLVED_BY_REWRITE | SOTA/broad baseline wording is removed or scoped; manuscript uses 8-dataset evidence and limitations. |
+| UNR-016 | "significant" improvement wording | Abstract/introduction/results | Manuscript prose and `statistical_report.md` | RESOLVED_WITH_MODEST_WORDING | Main claim is framed as a modest average paired delta with uncertainty, not broad significant superiority. |
+| UNR-017 | "orthogonality causes robustness" | Robustness and spectral sections | Manuscript prose | DOWNGRADED_PENDING_EVIDENCE | Manuscript explicitly avoids causal robustness claims; paired robustness evidence is still absent. |
+| UNR-018 | PSD-escape / "overcomes PSD bottleneck" framing | Figure 2 and Method | Manuscript prose | RESOLVED_BY_REWRITE | Manuscript now states softmax-weighted PSD sums remain PSD and frames the contribution as input-conditioned routing. |
+| UNR-019 | Missing ImageNet/SUN397/StanfordCars results | Experimental setup and reviewer R2-5d | No verified manifests for these datasets | SCOPED_AS_LIMITATION | Manuscript defines the benchmark as an 8-dataset suite and lists ImageNet/SUN397/StanfordCars as future work. |
 
 ## Recovered But Still Insufficient
 
@@ -47,16 +55,13 @@ The remaining blocker is evidence quality, not evidence absence: the recovered a
 
 ## Files Still Missing Or Not Yet Canonical
 
-The following are still needed outside this Phase 0 inventory:
+The following are still needed outside this Phase 0 inventory or outside the current manuscript pass:
 
-- Final rerun/evaluation manifest with seed IDs, split hashes, and validation/test role for every accepted table value.
-- `validation_sweep_manifest.jsonl` with validation-only selection, not test-set selection.
-- `split_manifest.json` or CSV with train/val/test counts, class lists, and hashes.
-- Seed2/seed3 raw logs/checkpoints or fresh reruns for Tier-A claims.
-- Exact checkpoint-log-workbook mapping for every value that remains in Tables 2-4 and ablations.
-- Paired corruption sample/cache manifest for robustness.
-- Spectrum and gating export manifests with checkpoint hash, layer/module, matrix definition, sample IDs, and script version.
+- Paired corruption sample/cache manifest and aggregate report for robustness.
+- Final page/line mapping after PDF layout review.
+- Release package packaging: anonymized repository, environment notes, scripts, manifests, and optional checkpoints.
+- Optional regeneration of gating specialization exports if the current qualitative figure needs stronger provenance.
 
 ## Phase 0 Gate Conclusion
 
-The Phase 0 tracking files and normalization outputs are complete, and raw logs/checkpoint evidence has been recovered. Acceptance-critical numerical claims remain `UNVERIFIED_RERUN_REQUIRED` until final evaluation manifests with seed/split provenance are regenerated and missing seeds/configurations are rerun or recovered.
+The Phase 0 tracking files and normalization outputs are complete, and raw logs/checkpoint evidence has been recovered. Acceptance-critical main accuracy claims are now superseded by the Phase 3 ramp100 rerun manifests. Robustness remains the only major numerical claim gate that is still unresolved for final quantitative reporting.

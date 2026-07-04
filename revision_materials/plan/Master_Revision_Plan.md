@@ -8,6 +8,8 @@
 
 **Tech Stack:** Python, PyTorch, CLIP, NumPy/SciPy, pytest, LaTeX, CSV/JSONL manifests, Markdown tracking files.
 
+**Current revision state as of 2026-07-04:** The main evidence pipeline is available for validation selection, Phase 3 ramp100 main results, same-parameter diagnostics, spectrum diagnostics, H/r/lambda diagnostics, and bounded ViT-L/14. The main LaTeX manuscript has been revised with yellow-highlighted changes and compiles. The Reviewer 2 evidence draft and RV2 section of the response-letter skeleton have been updated into 9 separate responses. Robustness remains excluded from quantitative claims: the paired robustness manifest is structurally complete, but it failed the clean-consistency gate for OH-SingLoRA and must be rerun with the fixed evaluator before use.
+
 ---
 
 ## 0. Source Hierarchy & Evidence Rules
@@ -97,7 +99,7 @@ Author decisions must be recorded before running experiments that depend on them
 **Tasks:**
 - [x] Search for original checkpoints, logs, CSVs, notebooks, Colab outputs, and seed records. **Complete after raw-evidence update: 724 logs, 5 CSV summaries, 20 zip archives, 153 loadable checkpoints, 1 workbook, and figure/source assets recovered; notebooks, split hashes, final rerun/evaluation manifests, and seed2/seed3 evidence remain missing.**
 - [x] Hash every recovered artifact and record path, timestamp, command/config, seed, split, and linked manuscript value. **Complete via `artifact_inventory.md`, `phase0_raw_artifact_manifest.csv`, and `revision_materials/results/main_results_manifest.*`; log final accuracies, zero-shot accuracies, CSV rows, checkpoint metadata, and path-derived hints were extracted where available, but split/seed/config metadata remain incomplete.**
-- [x] Mark each manuscript number as `VERIFIED`, `UNVERIFIED_RERUN_REQUIRED`, or `SOURCE-CODE_INSPECTION_REQUIRED`. **Complete in `revision_traceability.csv`, `unresolved_numbers.md`, `missing_tier_a_matrix.*`, and `workbook_vs_logs_crosscheck.*`; no acceptance-critical numerical claim is currently verified because seed2/seed3/split-hash evidence and final validation/test manifests are still absent.**
+- [x] Mark each manuscript number as `VERIFIED`, `UNVERIFIED_RERUN_REQUIRED`, or `SOURCE-CODE_INSPECTION_REQUIRED`. **Complete in `revision_traceability.csv`, `unresolved_numbers.md`, `missing_tier_a_matrix.*`, and `workbook_vs_logs_crosscheck.*` for Phase 0. Those Phase 0 statuses remain an audit trail for recovered legacy evidence; final acceptance-critical accuracy claims must now be sourced from the later rerun manifests, especially `phase3_main_ramp100_results.jsonl`, `phase3b_same_param_ramp100_report.md`, and `phase4_vitl14_results.jsonl`.**
 - [x] Create `reviewer_table_figure_mapping.md` before editing any response paragraph. **Complete after raw-log/checkpoint evidence update.**
 
 **Reviewer table/figure mapping format:**
@@ -199,6 +201,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] `statistical_report.md`. **Generated at `revision_materials/results/statistical_report.md` from the ramp100 Phase 3 manifest; includes full coverage audit, mean/std/95% CI, paired OrthoAdapt-minus-CLIP-LoRA deltas, parameter counts, and claim implications.**
 - [x] `generated_tables.tex`. **Generated at `revision_materials/results/generated_tables.tex`; includes 1-shot, 4-shot, 16-shot main tables and a paired-delta table from the ramp100 manifest.**
 - [x] summary CSV/Markdown. **Generated `revision_materials/results/phase3_main_ramp100_summary.csv`, `revision_materials/results/phase3_main_ramp100_summary.md`, `revision_materials/results/phase3_main_ramp100_paired_summary.csv`, and `revision_materials/results/phase3_main_ramp100_audit.md`.**
+- [x] Phase 3B same-parameter diagnostic summary. **Generated `revision_materials/results/phase3b_same_param_ramp100_report.md`, `phase3b_same_param_ramp100_summary.csv`, `phase3b_same_param_ramp100_dataset_summary.csv`, and `phase3b_same_param_ramp100_paired_results.csv`. Final same-parameter evidence pairs CLIP-LoRA r=2 from `phase3b_same_param_results.jsonl` with OH-SingLoRA H=2,r=2,lambda_o=0.03,ramp100 from `phase3b_same_param_ramp100_results.jsonl`; both have 184,320 trainable parameters.**
 - [x] Phase 3 run protocol and server command script. **Started with `revision_materials/plan/phase3_main_protocol.yaml`, `revision_materials/scripts/phase3_main_commands.sh`, and `revision_materials/plan/phase3_server_run_instructions.md`. Updated after ramp100 selection to 144 test-set commands: 8 datasets x 3 shots x 2 methods x 3 seeds. The OrthoAdapt arm uses the frozen validation winner `H=2,r=8,lambda_o=0.03,ramp_up_steps=100`; the CLIP-LoRA arm uses `r=8` for a selected-rank matched comparison. SingLoRA-CLIP is excluded from the main matrix by author decision because it is an internal unpublished CLIP adaptation, not a stable independently citable few-shot CLIP baseline.**
 
 **Minimum Tier A tasks:**
@@ -212,6 +215,7 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] Keep: validation-only hyperparameter selection was enforced before final test reporting.
 - [x] Keep: final Tier-A evidence is a complete paired 8-dataset, 3-shot, 3-seed matrix for CLIP-LoRA r=8 versus OrthoAdapt H=2,r=8,lambda_o=0.03,ramp100.
 - [x] Keep with precise wording: OrthoAdapt shows a modest positive average paired delta in the ramp100 final matrix while using fewer trainable parameters than CLIP-LoRA r=8.
+- [x] Keep with caution: the revised hybrid seed-1-original same-parameter r=2 diagnostic shows a small average paired gain for OH-SingLoRA H=2,r=2 over CLIP-LoRA r=2 (`+0.295` points, 95% CI `[+0.102,+0.488]`) with mixed dataset-level behavior; do not describe this as uniform same-parameter superiority.
 - [x] Weaken/remove: broad state-of-the-art, large-gain, or consistent-superiority claims.
 - [x] Weaken/remove until Phase 4 evidence exists: causal robustness claims, rank-fragmentation explanations, and mechanistic claims about head-count behavior.
 
@@ -227,10 +231,10 @@ Author decisions must be recorded before running experiments that depend on them
 **Purpose:** Support mechanistic claims only where diagnostics justify them.
 
 **Required outputs:**
-- [x] diagnostic manifests. **Generated existing-diagnostic and checkpoint-diagnostic artifacts: `phase4_existing_diagnostics.csv`, `phase4_checkpoint_diagnostics.jsonl`, and `phase4_spectrum_manifest.jsonl`. Robustness and ViT-L/14 manifests are generated by server commands and remain pending until those jobs finish.**
+- [x] diagnostic manifests. **Generated existing-diagnostic and checkpoint-diagnostic artifacts: `phase4_existing_diagnostics.csv`, `phase4_checkpoint_diagnostics.jsonl`, and `phase4_spectrum_manifest.jsonl`. ViT-L/14 subset manifest is available as `phase4_vitl14_results.jsonl`. Robustness currently has a structurally complete paired manifest with 576/576 severity rows, but the clean-consistency audit failed for OH-SingLoRA, indicating an evaluator/checkpoint-loading mismatch in the completed run.**
 - [x] spectral-analysis report. **Generated `revision_materials/results/phase4_spectrum_report.md` and figures in `revision_materials/results/figures/phase4_spectrum/` from paired Phase 3 ramp100 checkpoints. This is descriptive evidence only, not causal proof.**
-- [ ] robustness report. **Infrastructure generated: `revision_materials/scripts/phase4_eval_robustness.py`, `phase4_robustness_commands.sh`, and `phase4_aggregate_robustness.py`. Server run is still required to produce `phase4_robustness_manifest.jsonl`, `phase4_robustness_summary.csv`, and `phase4_robustness_report.md`.**
-- [ ] backbone-scaling report. **ViT-L/14 pilot/subset commands generated in `phase4_vitl14_pilot_commands.sh` and `phase4_vitl14_commands.sh`; `phase4_backbone_scaling_report.md` currently records pending/deferred status until pilot/subset results exist.**
+- [ ] robustness report. **Generated audit outputs `phase4_robustness_summary.csv` and `phase4_robustness_report.md`, but the report marks the current manifest as invalid for claims because severity-0 OH-SingLoRA accuracy does not reproduce Phase 3 clean accuracy. Use this only as an audit failure; rerun robustness after the evaluator fix before any robustness result is reported.**
+- [x] backbone-scaling report. **ViT-L/14 subset completed for EuroSAT+Caltech101, 4-shot, seeds 1/2/3, CLIP-LoRA r=8 vs OH-SingLoRA H=2,r=8. Generated `phase4_vitl14_summary.csv`, `phase4_vitl14_paired_results.csv`, and updated `phase4_backbone_scaling_report.md`. Claim gate: use as bounded larger-backbone feasibility/parameter-efficiency evidence, not as statistically established ViT-L/14 superiority.**
 - [x] Phase 4 run instructions. **Created `revision_materials/plan/phase4_server_run_instructions.md` with robustness and ViT-L/14 server commands and claim gates.**
 
 **Tasks:**
@@ -238,8 +242,8 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] Compare raw orthogonality sum vs pair-normalized mean. **Checkpoint diagnostics over 72 final OrthoAdapt checkpoints compute raw orthogonality and normalized subspace-overlap metrics; summarized in `phase4_orthogonality_report.md`.**
 - [x] Report head norms and subspace overlap metrics. **Generated `phase4_head_overlap_report.md` from `phase4_checkpoint_diagnostics.jsonl`; 72/72 OrthoAdapt Phase 3 ramp100 checkpoints processed.**
 - [x] Replace invalid spectral figure with rank-consistent metrics. **Generated paired spectrum diagnostics for all 8 datasets, shot=4, seed=1, vision layer 11, q/v projections. Old spectrum figures remain legacy only.**
-- [ ] Run ViT-L/14 subset if feasible. **Pilot and subset command scripts are ready; run pilot first and continue only if runtime is acceptable.**
-- [ ] Run robustness with deterministic paired corruptions and exact transform parameters. **Deterministic evaluator and 144-job command script are ready; server run remains pending.**
+- [x] Run ViT-L/14 subset if feasible. **Completed 12/12 ViT-L/14 rows and 6/6 paired comparisons; 12/12 checkpoint hashes matched local files.**
+- [ ] Run/aggregate robustness with deterministic paired corruptions and exact transform parameters. **Coverage is structurally complete and no checkpoint paths are missing, but the clean-consistency gate failed for OH-SingLoRA. The evaluator has been patched to infer the effective encoder from checkpoint keys and fail on unexpected adapter keys; rerun robustness before using the numbers.**
 
 **Claim rule:** Do not claim rank fragmentation or orthogonality-caused robustness unless these diagnostics support it.
 
@@ -247,8 +251,8 @@ Author decisions must be recorded before running experiments that depend on them
 - [x] Keep: H/r/lambda behavior is configuration-dependent under validation-only diagnostics.
 - [x] Keep: final OrthoAdapt checkpoints learn low-overlap head tensors, descriptively.
 - [x] Keep with caution: spectrum diagnostics may be used only as descriptive, checkpoint-backed evidence for the selected subset.
-- [x] Weaken/remove until robustness server run completes: robustness claims and orthogonality-causes-robustness wording.
-- [x] Weaken/remove until ViT-L/14 subset completes: backbone-scaling claims.
+- [x] Remove/defer robustness as a positive claim: the current paired robustness run failed the clean-consistency audit, so robustness and orthogonality-causes-robustness wording must stay out of final claims until a fixed rerun passes severity-0 reproduction.
+- [x] Keep with bounded wording: ViT-L/14 subset demonstrates applicability with fewer trainable parameters, but accuracy deltas are mixed and the paired 95% CI crosses zero, so do not claim broad larger-backbone superiority.
 
 ---
 
@@ -278,13 +282,14 @@ Author decisions must be recorded before running experiments that depend on them
 - data/code availability text.
 
 **Tasks:**
-- [ ] Rewrite PSD/rank theory: softmax-weighted PSD sums remain PSD.
-- [ ] Keep input-conditioned nonlinearity claim only where mathematically correct.
-- [ ] Replace invalid spectral discussion.
-- [ ] Replace "state-of-the-art" and "significant" wording unless statistically supported.
-- [ ] Add honest per-dataset loss discussion.
-- [ ] Add exact seed, split, validation, and iteration protocols.
-- [ ] Add release and reproducibility details.
+- [x] Rewrite PSD/rank theory: softmax-weighted PSD sums remain PSD. **Done in `cas-sc-template.tex` with yellow-highlighted PSD/input-conditioned routing wording.**
+- [x] Keep input-conditioned nonlinearity claim only where mathematically correct. **Done; the manuscript no longer claims that softmax gating escapes PSD for an individual input.**
+- [x] Replace invalid spectral discussion. **Done; spectrum is now described as checkpoint-backed descriptive diagnostics, not causal proof.**
+- [x] Replace broad "state-of-the-art" and uniform-superiority wording unless statistically supported. **Done in the revised manuscript and RV2 response draft.**
+- [x] Add honest per-dataset/shot uncertainty discussion. **Done through manifest-backed 1/4/16-shot tables and paired summary table.**
+- [x] Add exact seed, split, validation, and iteration protocols. **Done in the highlighted strict evaluation protocol and table notes.**
+- [x] Add release and reproducibility details. **Done in highlighted Data/Code Availability wording.**
+- [ ] Final PDF layout and page/line anchoring. **LaTeX compiles; still inspect final PDF layout and add final page/line references to the response letter.**
 
 ---
 
@@ -307,9 +312,9 @@ Response-letter drafting may begin only after:
 - manuscript sections have been updated or marked pending.
 
 **Tasks:**
-- [ ] Use `Response_Letter_Skeleton.md` only as structure.
-- [ ] Replace every placeholder with evidence-backed text.
-- [ ] Link every response to manuscript location and evidence artifact.
+- [x] Use `Response_Letter_Skeleton.md` only as structure. **RV2 section has been rewritten from the evidence draft after manuscript edits.**
+- [x] Replace every RV2 placeholder with evidence-backed text. **RV2 now has 9 separate responses: M1-M4 and Minor a-e.**
+- [ ] Link every response to final manuscript page/line location and evidence artifact. **Evidence links are present in substance; exact page/line anchors should wait for final PDF layout.**
 - [ ] Do not use "we have..." language without manifest support.
 - [ ] Include cover letter summary and publishing disclosures.
 

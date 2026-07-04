@@ -124,11 +124,39 @@ def evaluate(model, loader, dataset):
     return float(acc / total)
 
 
-def load_weights_smart(model, checkpoint_path: str, adapter_type: str, args) -> None:
+def read_checkpoint_weights(checkpoint_path: str):
     import torch
 
     ckpt = torch.load(checkpoint_path, map_location="cuda")
-    weights = ckpt["weights"] if isinstance(ckpt, dict) and "weights" in ckpt else ckpt
+    return ckpt["weights"] if isinstance(ckpt, dict) and "weights" in ckpt else ckpt
+
+
+def infer_state_dict_encoder(weights, requested_encoder: str) -> str:
+    """Avoid creating random un-loaded adapter branches for checkpoint-only eval."""
+    if not isinstance(weights, dict):
+        return requested_encoder
+    normalized_keys = [key.replace("module.", "", 1) for key in weights]
+    has_text = any(key.startswith("transformer.") for key in normalized_keys)
+    has_vision = any(key.startswith("visual.") for key in normalized_keys)
+    if has_text and has_vision:
+        return "both"
+    if has_text:
+        return "text"
+    if has_vision:
+        return "vision"
+    return requested_encoder
+
+
+def load_weights_smart(model, checkpoint_path: str, adapter_type: str, args) -> None:
+    import torch
+
+    weights = read_checkpoint_weights(checkpoint_path)
+    audit = {
+        "checkpoint_weight_count": len(weights) if isinstance(weights, dict) else None,
+        "copied_tensor_count": 0,
+        "unexpected_key_count": 0,
+        "missing_key_count": 0,
+    }
     if adapter_type == "lora":
         from loralib.utils import INDEX_POSITIONS_TEXT, INDEX_POSITIONS_VISION
 
@@ -142,6 +170,7 @@ def load_weights_smart(model, checkpoint_path: str, adapter_type: str, args) -> 
                             if name in weights[layer_key]:
                                 module.w_lora_A.data.copy_(weights[layer_key][name]["w_lora_A"])
                                 module.w_lora_B.data.copy_(weights[layer_key][name]["w_lora_B"])
+                                audit["copied_tensor_count"] += 2
                     layer_counter += 1
         if args.encoder in {"vision", "both"}:
             for i, block in enumerate(model.visual.transformer.resblocks):
@@ -152,21 +181,36 @@ def load_weights_smart(model, checkpoint_path: str, adapter_type: str, args) -> 
                             if name in weights[layer_key]:
                                 module.w_lora_A.data.copy_(weights[layer_key][name]["w_lora_A"])
                                 module.w_lora_B.data.copy_(weights[layer_key][name]["w_lora_B"])
+                                audit["copied_tensor_count"] += 2
                     layer_counter += 1
+        if audit["copied_tensor_count"] == 0:
+            raise RuntimeError(f"No LoRA tensors were copied from checkpoint: {checkpoint_path}")
     else:
         state_dict = {key.replace("module.", ""): value for key, value in weights.items()}
-        model.load_state_dict(state_dict, strict=False)
+        incompatible = model.load_state_dict(state_dict, strict=False)
+        audit["unexpected_key_count"] = len(incompatible.unexpected_keys)
+        audit["missing_key_count"] = len(incompatible.missing_keys)
+        if incompatible.unexpected_keys:
+            preview = incompatible.unexpected_keys[:10]
+            raise RuntimeError(f"Unexpected adapter keys while loading {checkpoint_path}: {preview}")
+        if not state_dict:
+            raise RuntimeError(f"No adapter tensors found in checkpoint: {checkpoint_path}")
+        audit["copied_tensor_count"] = len(state_dict)
+    return audit
 
 
 def build_model(args):
     import clip
     from loralib.utils import apply_adapter, apply_lora
 
+    weights = read_checkpoint_weights(args.checkpoint)
+    requested_encoder = args.encoder
+    effective_encoder = infer_state_dict_encoder(weights, requested_encoder) if args.adapter == "ohsinglora" else requested_encoder
     model, _ = clip.load(args.backbone, device="cuda")
 
     class AdapterArgs:
         adapter = args.adapter
-        encoder = args.encoder
+        encoder = effective_encoder
         position = args.position
         params = args.params
         r = args.r
@@ -185,8 +229,21 @@ def build_model(args):
     for module in model.modules():
         if "LayerNorm" in type(module).__name__:
             module.float()
-    load_weights_smart(model, args.checkpoint, args.adapter, args)
-    return model
+    original_encoder = args.encoder
+    args.encoder = effective_encoder
+    try:
+        load_audit = load_weights_smart(model, args.checkpoint, args.adapter, args)
+    finally:
+        args.encoder = original_encoder
+    load_audit.update(
+        {
+            "requested_encoder": requested_encoder,
+            "effective_encoder": effective_encoder,
+        }
+    )
+    if requested_encoder != effective_encoder:
+        print(f"Adjusted adapter encoder from {requested_encoder} to {effective_encoder} based on checkpoint keys.")
+    return model, load_audit
 
 
 def write_jsonl(path: str, records: list[dict]) -> None:
@@ -232,7 +289,7 @@ def main(argv: list[str] | None = None) -> int:
         raise SystemExit("CUDA is required for Phase 4 robustness evaluation")
 
     start = time.time()
-    model = build_model(args)
+    model, load_audit = build_model(args)
     dataset = build_dataset(args.dataset, args.root_path, args.shots, None)
     records = []
     for severity in [0, 1, 2, 3]:
@@ -263,12 +320,14 @@ def main(argv: list[str] | None = None) -> int:
                     "lambda_o": args.lambda_o if args.adapter == "ohsinglora" else 0.0,
                     "ramp_up_steps": args.ramp_up_steps if args.adapter == "ohsinglora" else 100,
                     "encoder": args.encoder,
+                    "effective_encoder": load_audit["effective_encoder"],
                     "position": args.position,
                     "params": args.params,
                 },
                 "checkpoint": {
                     "path": args.checkpoint,
                     "sha256": file_sha256(args.checkpoint),
+                    "load_audit": load_audit,
                 },
                 "severity": severity,
                 "corruption": spec,

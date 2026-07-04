@@ -10,8 +10,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_MANIFEST = ROOT / "revision_materials" / "results" / "phase3_main_ramp100_results.jsonl"
 OUT_COMMANDS = ROOT / "revision_materials" / "scripts" / "phase4_robustness_commands.sh"
-ROBUST_MANIFEST = "revision_materials/results/phase4_robustness_manifest.jsonl"
-LOG_DIR = "revision_materials/logs/phase4_robustness"
+ROBUST_MANIFEST = "${ROBUST_MANIFEST}"
+LOG_DIR = "${ROBUST_LOG_DIR}"
 
 
 def load_manifest(path: Path) -> list[dict]:
@@ -80,6 +80,8 @@ def main(argv: list[str] | None = None) -> None:
                 "PYTHON=${PYTHON:-python3}",
                 "DATA_ROOT=${DATA_ROOT:-/root/DATA}",
                 "RUN_STAMP=${RUN_STAMP:-$(date +%Y%m%d_%H%M%S)}",
+                "ROBUST_MANIFEST=${ROBUST_MANIFEST:-revision_materials/results/phase4_robustness_manifest_fixed.jsonl}",
+                "ROBUST_LOG_DIR=${ROBUST_LOG_DIR:-revision_materials/logs/phase4_robustness_fixed}",
                 "",
                 "if [ ! -f \"${DATA_ROOT}/Food101/split_zhou_Food101.json\" ]; then",
                 "  for candidate in \\",
@@ -110,7 +112,10 @@ def main(argv: list[str] | None = None) -> None:
         ),
         encoding="utf-8",
     )
-    print(out.relative_to(ROOT).as_posix())
+    try:
+        print(out.resolve().relative_to(ROOT).as_posix())
+    except ValueError:
+        print(out.as_posix())
     print(f"commands={len(commands)}")
 
 

@@ -32,10 +32,10 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 - **Impact:** Reframe the response letter to address DoRA via literature comparison rather than direct empirical comparison.
 
 ### 1.5 ImageNet Inclusion
-- **Decision:** Go/No-Go based on Jun 24 Pilot.
-- **Rationale:** Go if pilot wall-clock projection shows Tier-A matrix plus ImageNet/SUN397/StanfordCars can finish by July 3 with available GPU resources; otherwise run SUN397/StanfordCars first and defer ImageNet.
-- **Date / Decided by:** 2026-06-16 / HN Tran
-- **Impact:** If ImageNet is deferred, the manuscript will remove "standard 11-dataset comprehensive suite" wording and explicitly state that ImageNet is left for future work due to compute constraints. SUN397/StanfordCars are prioritized before ImageNet if compute is constrained.
+- **Decision:** Defer ImageNet, SUN397, and StanfordCars for this revision package; define the revised benchmark as an 8-dataset few-shot suite.
+- **Rationale:** No verified manifest-backed results exist for ImageNet, SUN397, or StanfordCars within the current revision evidence package. Adding partial or unsupported rows would weaken the response. The stronger and more honest answer is to restrict claims to the 8 datasets with complete Phase 3 ramp100 evidence and list the missing standard-suite datasets as future work.
+- **Date / Decided by:** 2026-07-04 / HN Tran
+- **Impact:** The manuscript must not claim the complete 11-dataset CLIP suite. Reviewer 2 Minor d should be answered as a scope clarification and limitation, not as newly completed evidence.
 
 ### 1.6 Code Release Plan
 - **Decision:** Anonymized GitHub link on submission.
@@ -48,6 +48,31 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 - **Rationale:** The citable SingLoRA work is a general PEFT preprint, while the SingLoRA-CLIP variant in this repository is an internal unpublished CLIP adaptation still under investigation. Including it as a main reviewer-facing baseline would mix a non-public, unstable research variant into the acceptance-critical table and could reduce reproducibility. CLIP-LoRA is the appropriate direct baseline because it is a public few-shot VLM/CLIP method and explicitly positions itself as a strong baseline for evaluating progress in few-shot VLM adaptation.
 - **Date / Decided by:** 2026-06-18 / HN Tran
 - **Impact:** Update `phase3_main_protocol.yaml`, `phase3_main_commands.sh`, and server instructions to 144 runs. Mention SingLoRA-CLIP only as internal exploratory/future work unless it is separately published with stable code, protocol, and citations.
+
+### 1.8 Dual-Configuration Main-Table Strategy (r=2 matched-rank vs r=8 validation-selected)
+- **Decision:** Present two distinct main-result tables that serve two different purposes, and distinguish them explicitly throughout the manuscript:
+  - **Table A - Matched-rank literature comparison (r=2, H=2, lambda_o=0.03).** Restore the full literature suite (CLIP zero-shot, CoOp M=4/16, CoCoOp, CLIP-Adapter, Tip-Adapter-F, PLOT++, KgCoOp, TaskRes, MaPLe, ProGrad, CLIP-LoRA) exactly as in the original submission's Tables 1-3. The `r=2` setting is the rank that **matches the CLIP-LoRA baseline's default rank**; it is a comparison axis, not a tuned hyper-parameter. This table answers R1-W1 (novelty/positioning) and R1-W4 (baseline completeness) and preserves the "we compete against the field at equal rank" story that the revised head-to-head-only tables had removed.
+  - **Table B - Validation-selected configuration + parameter efficiency (r=8, H=2, lambda_o=0.03).** Keep the current head-to-head CLIP-LoRA r=8 vs OrthoAdapt r=8 tables and emphasize the 37.5% trainable-parameter reduction. This answers R2-M2 (validation-only selection) and supports Q3/backbone-scaling.
+- **Data sourcing:**
+  - Table A literature rows keep the **original cited numbers** from the previous submission (CoOp...PLOT++, etc.).
+  - Table A CLIP-LoRA r=2 and OrthoAdapt r=2,H=2,lambda_o=0.03 rows use a **hybrid 3-seed aggregation**: seed 1 is retained from the original submitted Tables 1-3, while seeds 2 and 3 come from Phase 3B same-parameter reruns (`phase3b_same_param_results.jsonl` for CLIP-LoRA r=2; `phase3b_same_param_ramp100_results.jsonl` for OrthoAdapt r=2). Both methods remain at 184,320 trainable parameters. This preserves the author-approved original table as the seed-1 record while adding paired uncertainty from two additional matched seeds.
+  - Table B rows use the Phase 3 main ramp100 manifest (`phase3_main_ramp100_results.jsonl`).
+- **Rationale:** `r=2` and `r=8` are two points on a **rank axis**, not two independently tuned models. The original design fixed `r=2` to match CLIP-LoRA's rank so that gains could not be attributed to a larger adapter budget; the validation scan later identified `r=8` as the higher-rank configuration. Under the hybrid Table A aggregation, the r=2 overall paired delta is +0.295 pp with 95% CI [0.102,0.488]; under the full ramp100 rerun, the r=8 overall paired delta is +0.356 pp with 95% CI [0.162,0.551]. Keeping r=2 for the literature table therefore preserves the comprehensive comparison R1 asked for while keeping the claim modest and paired.
+- **Framing rule for R2-M2 defense:** State that **Table B uses the validation-selected configuration** `H=2,r=8,lambda_o=0.03` from the ramp100 validation sweep. For **Table A**, `r=2` is the baseline-matching rank axis, while `H=2` and `lambda_o=0.03` are held fixed from the original/frozen protocol for consistency with the matched-rank literature comparison. Do **not** claim that `lambda_o=0.03` was independently selected at `r=2`; the r=2 lambda sensitivity is weak/within-noise and is documented separately in Decision 1.9. Do not describe r=2 as separately tuned.
+- **Date / Decided by:** 2026-07-04 / HN Tran
+- **Impact:** Restore Table A (literature suite, r=2) alongside the existing Table B (r=8) in `cas-sc-template.tex`; update the Reviewer 1 (W1/W4) and Reviewer 2 (M2/a) responses to reference both tables, the matched-rank framing, and the hybrid seed-1-original aggregation for Table A. The original Aircraft 16-shot `54.97/54.97` value is retained as the seed-1 table value rather than treated as a copy error; the corresponding 3-seed hybrid means are CLIP-LoRA 54.65 and OrthoAdapt 54.63.
+
+### 1.9 Fixed lambda_o Across Rank Points (no r=2 re-tuning; lambda is weak/configuration-dependent at r=2)
+- **Decision:** Use a single fixed `lambda_o=0.03` for both the r=2 and r=8 configurations. Do **not** rerun the r=2 matrix with `lambda_o=0.05`, even though 0.05 is nominally the top validation value at r=2.
+- **Evidence (ramp100 validation, r=2, H=2, EuroSAT+Caltech101, 4-shot, seeds {1,2,3}, mean validation accuracy):**
+  - lambda_o=0.05 -> 91.000
+  - lambda_o=0.00 -> 90.958
+  - lambda_o=0.03 -> 90.958
+  - lambda_o=0.01 -> 90.125
+- **Rationale:** At `r=2,H=2` the orthogonality weight is **weak and configuration-dependent**: the full sweep spans only 90.125-91.000 (< 0.9 points), and the 0.00 / 0.03 / 0.05 values lie within 0.05 points of each other, well inside seed noise. The `lambda_o=0.03` value is the one selected by the validation protocol at the `r=8` grid, where it is the genuine winner; applying the same fixed value at r=2 is consistent with the fixed-hyper-parameter framing and avoids per-rank cherry-picking. Re-running the entire r=2 matrix to switch 0.03 -> 0.05 would change the matched-rank comparison by a statistically meaningless margin and is therefore not justified.
+- **Honesty guardrail:** Do **not** claim that validation selected `lambda_o=0.03` at r=2. The correct statement is that 0.03 is the validation-selected value at r=8 and is held fixed across rank points, and that at r=2 the lambda effect is weak/within-noise so the specific choice among {0, 0.03, 0.05} does not affect the conclusion.
+- **Date / Decided by:** 2026-07-04 / HN Tran
+- **Impact:** Add a short validation-sensitivity sentence (with the four r=2 lambda values or a range statement) to the ablation/appendix text; ensure the Reviewer 2 M2 response uses the fixed-lambda / weak-effect wording rather than an r=2 selection claim.
 
 
 ## 2. Administrative / Publishing Decisions
@@ -92,4 +117,4 @@ This file records author-level decisions that gate the Master Revision Plan. Do 
 - **Decision:** Submit Response Letter, Cover Letter, Clean PDF, and Marked-up PDF.
 - **Rationale:** Required for this resubmission package.
 - **Date / Decided by:** 2026-06-16 / HN Tran
-- **Impact:** Phase 8 requires `latexdiff` (preferred) or manual color highlighting (blue text) for revisions.
+- **Impact:** Phase 8 requires a clean manuscript and a marked-up manuscript. The current LaTeX revision uses yellow-highlight macros (`\revyellow{...}` and `\revyellowcaption{...}`), so further manuscript edits should preserve the same yellow-highlight convention unless the journal requires a different marked-up format.
