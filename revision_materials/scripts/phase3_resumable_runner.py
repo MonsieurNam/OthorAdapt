@@ -76,6 +76,8 @@ def _flag_value(command, flag):
 
 
 def command_iterations(command):
+    if re.search(r"(?:^|\s)--eval_only(?:\s|$)", command):
+        return None
     n_iters = _float_or_none(_flag_value(command, "--n_iters"))
     shots = _float_or_none(_flag_value(command, "--shots"))
     if n_iters is None or shots is None:
@@ -129,7 +131,7 @@ def completed_filenames(manifest_path):
         filename = _nested(record, "config.filename")
         checkpoint_sha = _nested(record, "checkpoint.sha256")
         status = record.get("status")
-        if status == "completed" and filename and checkpoint_sha:
+        if status in {"completed", "eval_only"} and filename and checkpoint_sha:
             completed.add(str(filename))
             runtime = _float_or_none(
                 _nested(record, "metrics.runtime_seconds")
@@ -190,8 +192,8 @@ def run_pending_commands(
     # with n_iters * shots, so a flat mean runtime/run badly underestimates the
     # remaining time once the cheap 1-shot runs finish first. Fall back to flat
     # mean only when iteration metadata is unavailable.
-    if historical_seconds_per_iteration is not None:
-        pending_iterations = sum(command_iterations(command) or 0 for _, command in pending)
+    pending_iterations = sum(command_iterations(command) or 0 for _, command in pending)
+    if historical_seconds_per_iteration is not None and pending_iterations > 0:
         write(
             "Historical mean seconds/iteration="
             f"{historical_seconds_per_iteration:.6f}; ETA for pending="

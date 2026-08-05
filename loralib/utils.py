@@ -6,6 +6,14 @@ import torch
 import torch.nn as nn
 from typing import Dict, List
 
+from adapter_checkpoint_v2 import (
+    adapter_metadata,
+    adapter_state_dict,
+    validate_adapter_metadata,
+    validate_adapter_state_dict,
+    validate_saturated_ramp_state,
+)
+
 from .layers import LoRALayer, PlainMultiheadAttentionLoRA
 from .layers_singlora import  LinearSingLoRA,  PlainMultiheadAttentionAdapter, LinearGMHSingLoRA
 from .layers_OH_singlora import LinearOHsingLoRA
@@ -305,25 +313,20 @@ def save_adapter(args, model):
     """
     Hàm chung để lưu các trọng số có thể huấn luyện của adapter.
     """
-    adapter_state_dict = {}
-
-    for name, param in model.state_dict().items():
-        if 'lora_' in name or 'gating_network' in name:
-            adapter_state_dict[name] = param
-
-    metadata = {
-        'adapter': args.adapter,
-        'r': args.r,
-        'alpha': args.alpha,
-        'params': args.params,
-        'position': args.position,
-        'encoder': args.encoder,
-        'backbone': args.backbone,
+    checkpoint_weights = {
+        name: value.detach().cpu()
+        for name, value in adapter_state_dict(model).items()
     }
-    metadata.update(getattr(args, 'checkpoint_extra_metadata', {}))
+
+    metadata = adapter_metadata(args)
+    extra_metadata = getattr(args, 'checkpoint_extra_metadata', {})
+    collisions = sorted(set(metadata).intersection(extra_metadata))
+    if collisions:
+        raise ValueError(f"checkpoint_extra_metadata cannot override v2 fields: {collisions}")
+    metadata.update(extra_metadata)
 
     save_data = {
-        'weights': adapter_state_dict,
+        'weights': checkpoint_weights,
         'metadata': metadata
     }
 
@@ -346,24 +349,24 @@ def load_adapter(args, model):
         raise FileNotFoundError(f"Adapter weights not found at: {load_path}")
 
     loaded_data = torch.load(load_path, map_location='cpu')
+    if not isinstance(loaded_data, dict):
+        raise ValueError("Adapter checkpoint must be a dictionary")
 
-    metadata = loaded_data.get('metadata', {})
-    expected_metadata = {
-        'adapter': args.adapter,
-        'r': args.r,
-        'alpha': args.alpha,
-    }
-    for key, value in expected_metadata.items():
-        if metadata.get(key) != value:
-            raise ValueError(f"Metadata mismatch for '{key}'! Expected '{value}', but found '{metadata.get(key)}' in checkpoint.")
+    metadata = loaded_data.get('metadata')
+    validate_adapter_metadata(metadata, args)
 
-    weights = loaded_data['weights']
+    weights = loaded_data.get('weights')
+    expected_state = adapter_state_dict(model)
+    validate_adapter_state_dict(expected_state, weights)
+    validate_saturated_ramp_state(weights, args.ramp_up_steps)
 
     incompatible_keys = model.load_state_dict(weights, strict=False)
-
-    if incompatible_keys.missing_keys:
-        print(f"Info: Some adapter keys were not found in the model state_dict (this is expected): {incompatible_keys.missing_keys[:5]}...")
     if incompatible_keys.unexpected_keys:
-        print(f"Warning: The checkpoint contains unexpected keys not present in the model: {incompatible_keys.unexpected_keys}")
+        raise ValueError(
+            f"Unexpected keys after validated adapter load: {incompatible_keys.unexpected_keys}"
+        )
+    loaded_state = adapter_state_dict(model)
+    validate_saturated_ramp_state(loaded_state, args.ramp_up_steps)
 
     print(f"{args.adapter.upper()} weights loaded from {load_path}")
+    return load_path

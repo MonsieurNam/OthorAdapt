@@ -34,15 +34,17 @@ class Phase3ResumableRunnerTest(unittest.TestCase):
 
         self.assertEqual(extract_filename(command), "eurosat_4shot_seed1_test_lora_r4")
 
-    def test_completed_filenames_requires_completed_status_and_checkpoint_hash(self):
+    def test_completed_filenames_accepts_hashed_train_and_eval_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
             manifest = Path(tmp) / "results.jsonl"
             manifest.write_text(
                 "\n".join(
                     [
                         json.dumps(manifest_row("done")),
+                        json.dumps(manifest_row("evaluated", status="eval_only")),
                         json.dumps(manifest_row("failed", status="failed")),
                         json.dumps(manifest_row("missing_hash", sha="")),
+                        json.dumps(manifest_row("eval_missing_hash", status="eval_only", sha="")),
                     ]
                 )
                 + "\n",
@@ -51,8 +53,8 @@ class Phase3ResumableRunnerTest(unittest.TestCase):
 
             completed, runtimes = completed_filenames(manifest)
 
-        self.assertEqual(completed, {"done"})
-        self.assertEqual(runtimes, [10.0])
+        self.assertEqual(completed, {"done", "evaluated"})
+        self.assertEqual(runtimes, [10.0, 10.0])
 
     def test_load_phase3_commands_skips_headers_and_blank_lines(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -119,6 +121,11 @@ class Phase3ResumableRunnerTest(unittest.TestCase):
         command = "$PYTHON main.py --n_iters 500 --shots 16 --filename run_a"
 
         self.assertEqual(command_iterations(command), 8000)
+
+    def test_command_iterations_does_not_count_eval_only_as_training(self):
+        command = "$PYTHON main.py --n_iters 500 --shots 16 --eval_only --filename run_a"
+
+        self.assertIsNone(command_iterations(command))
 
 
 if __name__ == "__main__":

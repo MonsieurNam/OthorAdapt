@@ -99,13 +99,17 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
 
     if args.eval_only:
         print(f"\nEvaluation-only mode for {args.adapter.upper()} adapter.")
+        checkpoint_path = ""
         if args.adapter == 'lora':
             load_lora(args, list_adapter_layers)
         elif args.adapter in ['singlora', 'gmhsinglora', 'ohsinglora']:
-            load_adapter(args, list_adapter_layers)
+            checkpoint_path = load_adapter(args, clip_model)
 
         acc_selection = evaluate(args, clip_model, selection_loader, dataset)
-        acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
+        if report_test and selection_split == "test":
+            acc_test = acc_selection
+        else:
+            acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
         print(f"**** {selection_split.capitalize()} accuracy: {acc_selection:.2f}. ****")
         if acc_test is not None:
             print(f"**** Test accuracy: {acc_test:.2f}. ****")
@@ -123,6 +127,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 args,
                 getattr(args, "dataset_provenance", {}),
                 metrics,
+                checkpoint_path=checkpoint_path,
+                checkpoint_sha256=file_sha256(checkpoint_path),
                 status="eval_only",
             )
             write_jsonl_record(args.run_manifest, record)
