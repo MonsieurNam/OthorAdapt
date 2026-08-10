@@ -1,0 +1,45 @@
+{
+  "schema_version": "phase3.reviewer2.lambda0.v1",
+  "status": "FROZEN_FOR_REVIEWER2_COMPONENT_ABLATION",
+  "rationale": "Full three-seed OrthoAdapt lambda_o=0 control under the frozen r=8 ramp100 protocol, used to isolate the incremental orthogonality contribution.",
+  "datasets": [
+    "fgvc",
+    "eurosat",
+    "food101",
+    "oxford_pets",
+    "oxford_flowers",
+    "caltech101",
+    "dtd",
+    "ucf101"
+  ],
+  "shots": [1, 4, 16],
+  "seeds": [1, 2, 3],
+  "method": {
+    "adapter": "ohsinglora",
+    "num_heads": 2,
+    "r": 8,
+    "alpha": 1,
+    "lambda_o": 0,
+    "ramp_up_steps": 100
+  },
+  "base_command": {
+    "python": "$PYTHON",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "save_path": "revision_materials/checkpoints/phase3_reviewer2_lambda0_ramp100",
+    "train_manifest": "revision_materials/results/phase3_reviewer2_lambda0_train_results.jsonl",
+    "eval_manifest": "revision_materials/results/phase3_reviewer2_lambda0_eval_results.jsonl",
+    "train_log_dir": "revision_materials/logs/phase3_reviewer2_lambda0_train",
+    "eval_log_dir": "revision_materials/logs/phase3_reviewer2_lambda0_eval",
+    "backbone": "ViT-B/16",
+    "encoder": "both",
+    "position": "all",
+    "params": ["q", "k", "v"],
+    "n_iters": 500,
+    "batch_size": 32,
+    "loss_fn": "ce",
+    "ortho_reduction": "mean"
+  },
+  "expected_train_command_count": 72,
+  "expected_eval_command_count": 72
+}
