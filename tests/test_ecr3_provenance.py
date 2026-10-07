@@ -56,6 +56,7 @@ class ECR3ProvenanceTest(unittest.TestCase):
             params=["q", "k", "v"],
             run_manifest="out.jsonl",
             git_revision="TESTREV",
+            runtime_environment={"gpu_uuid": "GPU-1", "gpu_name": "RTX 3090"},
         )
         record = build_run_record(
             args,
@@ -73,6 +74,7 @@ class ECR3ProvenanceTest(unittest.TestCase):
         self.assertEqual(record["checkpoint"]["sha256"], "ABC123")
         self.assertEqual(record["git_revision"], "TESTREV")
         self.assertEqual(record["metrics"]["trainable_parameters"], 42)
+        self.assertEqual(record["environment"]["gpu_uuid"], "GPU-1")
         self.assertEqual(record["evidence_gate"]["seed_status"], "row_seed_recorded")
         self.assertEqual(record["evidence_gate"]["split_status"], "split_hash_recorded")
 
@@ -102,6 +104,7 @@ class ECR3ProvenanceTest(unittest.TestCase):
             checkpoint_extra_metadata={"large": "payload"},
             dataset_provenance={"splits": {}},
             run_command=["main.py"],
+            runtime_environment={"gpu_uuid": "GPU-1"},
         )
 
         config = args_to_config(args)

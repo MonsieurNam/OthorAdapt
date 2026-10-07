@@ -34,6 +34,7 @@ def protocol():
             "save_path": "revision_materials/checkpoints/validation_sweep",
             "log_dir": "revision_materials/logs/validation_sweep",
             "adapter": "ohsinglora",
+            "ramp_up_steps": 100,
             "backbone": "ViT-B/16",
             "encoder": "both",
             "position": "all",
@@ -90,7 +91,7 @@ class Phase2ValidationSweepTest(unittest.TestCase):
         self.assertTrue(all("--run_manifest revision_materials/results/validation_sweep_results.jsonl" in command for command in commands))
         self.assertTrue(all("2>&1 | tee revision_materials/logs/validation_sweep/" in command for command in commands))
         self.assertTrue(any("--filename eurosat_4shot_seed1_val_ohsinglora_h2_r2_lo0p0" in command for command in commands))
-        self.assertTrue(any("eurosat_4shot_seed1_val_ohsinglora_h2_r2_lo0p0_${RUN_STAMP}.log" in command for command in commands))
+        self.assertTrue(any("eurosat_4shot_seed1_val_ohsinglora_h2_r2_lo0p0_ramp100_${RUN_STAMP}.log" in command for command in commands))
         self.assertTrue(all("--report_test" not in command for command in commands))
 
     def test_frozen_protocol_generates_120_runs(self):

@@ -1,0 +1,22 @@
+[
+  {
+    "path": "revision_materials/results/phase3_main_ramp100_results.jsonl",
+    "sha256": "68BD52EE519AE18A390D61539DF3F8083167353B2F119E912F43BE519C180F34"
+  },
+  {
+    "path": "revision_materials/reviewer4/raw/frozen_dynamic_reference.jsonl",
+    "sha256": "2B055D54649C1AFB909AE44531A44D756CF70E478DADAF47D72ADEE024189896"
+  },
+  {
+    "path": "revision_materials/results/phase3_main_ramp100_summary.csv",
+    "sha256": "FB332CF2E54F9843485ED6708E7E683E8CEAD744A92AEC0E6EFDB2AD82C18A79"
+  },
+  {
+    "path": "revision_materials/results/phase3_main_ramp100_paired_summary.csv",
+    "sha256": "C2570B9E03620EBD809587DD4213F20ED6CCA2057907F3482C15F642B976E61B"
+  },
+  {
+    "path": "revision_materials/reviewer4/protocol/reviewer4_gating_protocol.yaml",
+    "sha256": "94922F8349F9D527877A2373F11FD5B2DC78F41D220E5AEBAA2B03DC4524D626"
+  }
+]

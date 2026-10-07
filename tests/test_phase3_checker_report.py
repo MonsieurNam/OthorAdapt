@@ -64,13 +64,13 @@ class Phase3CheckerReportTest(unittest.TestCase):
         self.assertEqual(data["done"], 1)
         self.assertEqual(data["total"], 2)
         self.assertEqual(data["pending"], 1)
-        self.assertEqual(data["rate"], "1.0050s/iter")
+        self.assertEqual(data["rate"], "0.0100s/iter")
         self.assertEqual(data["pending_iterations"], 2000)
-        self.assertEqual(data["eta_seconds"], 2010)
-        self.assertEqual(data["eta_human"], "33m30s")
-        self.assertEqual(data["estimated_finish_utc"], "2026-06-18 00:33 UTC")
-        self.assertEqual(data["estimated_finish_vn"], "2026-06-18 07:33 VN")
-        self.assertEqual(data["cost_remaining_vnd"], 5000)
+        self.assertEqual(data["eta_seconds"], 20)
+        self.assertEqual(data["eta_human"], "20s")
+        self.assertEqual(data["estimated_finish_utc"], "2026-06-18 00:00 UTC")
+        self.assertEqual(data["estimated_finish_vn"], "2026-06-18 07:00 VN")
+        self.assertEqual(data["cost_remaining_vnd"], 0)
 
 
 if __name__ == "__main__":

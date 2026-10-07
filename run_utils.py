@@ -40,6 +40,13 @@ def get_arguments():
     # MH-SingLoRA-specific arguments
     parser.add_argument('--num_heads', type=int, default=2,
                         help='[MH-SingLoRA & G-MHSingLoRA only] Number of heads for the adapter.')
+    parser.add_argument(
+        '--routing_mode',
+        type=str,
+        default='input_conditioned',
+        choices=['input_conditioned', 'input_independent'],
+        help='Routing policy for gated OrthoAdapt. The default preserves the original input-conditioned behavior.',
+    )
 
     # LoRA / SingLoRA arguments (shared)
     parser.add_argument('--position', type=str, default='all', choices=['bottom', 'mid', 'up', 'half-up', 'half-bottom', 'all', 'top3'],
@@ -70,6 +77,12 @@ def get_arguments():
     parser.add_argument('--filename', default='adapter_weights', help='File name to save the adapter weights (.pt extension will be added).')
     parser.add_argument('--run_manifest', default=None,
                         help='Optional JSONL path for ECR3 run records with config, split hashes, metrics, and checkpoint hash.')
+    parser.add_argument('--split_reference_manifest', default=None,
+                        help='Optional frozen dynamic-run manifest used to hard-gate class and train/val/test split identities.')
+    parser.add_argument('--profile_repetition', type=int, default=0,
+                        help='Profiling repetition identifier recorded in provenance; zero means a non-profiling run.')
+    parser.add_argument('--compute_profile_only', default=False, action='store_true',
+                        help='Train and record compute metrics/checkpoint without producing an accuracy result.')
     parser.add_argument('--selection_split', default='val', choices=['val', 'test'],
                         help='Split used for model/config selection. Default: val.')
     parser.add_argument('--sweep_mode', default=False, action='store_true',
@@ -91,6 +104,12 @@ def get_arguments():
     parser.add_argument('--gamma', type=float, default=2.0,
                     help='[Focal Loss only] The focusing parameter gamma.')
     args = parser.parse_args()
+    if args.routing_mode == 'input_independent' and args.adapter != 'ohsinglora':
+        parser.error('--routing_mode input_independent requires --adapter ohsinglora')
+    if args.compute_profile_only and args.eval_only:
+        parser.error('--compute_profile_only cannot be combined with --eval_only')
+    if args.compute_profile_only and args.report_test:
+        parser.error('--compute_profile_only cannot be combined with --report_test')
     try:
         validate_reporting_policy(args.selection_split, args.sweep_mode, args.report_test)
     except ValueError as exc:

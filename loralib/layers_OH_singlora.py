@@ -24,6 +24,7 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         lora_alpha: int = 1,
         ramp_up_steps: int = 100,
         num_heads: int = 2,
+        routing_mode: str = "input_conditioned",
         **kwargs
     ):
         # Khởi tạo các lớp cha y hệt như LinearGMHSingLoRA
@@ -35,7 +36,27 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         )
         SingLoRALayer.__init__(self, r=r, lora_alpha=lora_alpha, ramp_up_steps=ramp_up_steps)
 
+        if routing_mode not in {"input_conditioned", "input_independent"}:
+            raise ValueError(
+                "routing_mode must be either 'input_conditioned' or "
+                "'input_independent'"
+            )
+
         self.num_heads = num_heads
+        self.routing_mode = routing_mode
+        self.routing_context_id = (
+            "normalized_ones_v1"
+            if routing_mode == "input_independent"
+            else "not_applicable"
+        )
+        self.register_buffer(
+            "routing_context",
+            torch.full(
+                (self.in_features,),
+                1.0 / math.sqrt(self.in_features),
+                dtype=torch.float32,
+            ),
+        )
         if self.r > 0:
             assert r % num_heads == 0, f"Rank 'r' ({r}) must be divisible by 'num_heads' ({num_heads})."
             self.rank_per_head = r // num_heads
@@ -64,6 +85,18 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
             )
             nn.init.zeros_(self.gating_network[0].weight)
 
+    def routing_weights(self, x: torch.Tensor) -> torch.Tensor:
+        """Return token-wise or broadcast input-independent routing weights."""
+        gate_weight = self.gating_network[0].weight
+        if self.routing_mode == "input_conditioned":
+            gate_input = x.detach().to(device=gate_weight.device, dtype=gate_weight.dtype)
+            return self.gating_network(gate_input)
+
+        context = self.routing_context.to(device=gate_weight.device, dtype=gate_weight.dtype)
+        fixed_weights = self.gating_network(context)
+        target_shape = (*x.shape[:-1], self.num_heads)
+        return fixed_weights.expand(target_shape)
+
     def forward(self, x: torch.Tensor, **kwargs):
         dtype = x.dtype
         weight = self.weight.to(dtype)
@@ -77,7 +110,7 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         if self.training:
             self.step()
 
-        gating_weights = self.gating_network(x.detach().to(self.gating_network[0].weight.dtype))
+        gating_weights = self.routing_weights(x)
         gating_weights = gating_weights.to(dtype)
 
         lora_A_heads = self.lora_A_heads.to(dtype)

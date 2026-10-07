@@ -7,6 +7,7 @@ import torch.nn as nn
 from typing import Dict, List
 
 from adapter_checkpoint_v2 import (
+    LEGACY_CHECKPOINT_SCHEMA_VERSION,
     adapter_metadata,
     adapter_state_dict,
     validate_adapter_metadata,
@@ -247,6 +248,16 @@ def apply_adapter(args, clip_model):
     if args.adapter not in adapter_map:
         raise ValueError(f"Adapter type '{args.adapter}' is not supported by this function.")
 
+    routing_mode = getattr(args, 'routing_mode', 'input_conditioned')
+    if routing_mode not in {'input_conditioned', 'input_independent'}:
+        raise ValueError(
+            "routing_mode must be either 'input_conditioned' or 'input_independent'"
+        )
+    if routing_mode == 'input_independent' and args.adapter != 'ohsinglora':
+        raise ValueError(
+            "routing_mode=input_independent is only supported for adapter=ohsinglora"
+        )
+
     linear_adapter_class = adapter_map[args.adapter]
     print(f">> Applying {args.adapter.upper()} adapter...")
 
@@ -258,6 +269,8 @@ def apply_adapter(args, clip_model):
 
     if args.adapter in ['gmhsinglora', 'ohsinglora']:
         adapter_kwargs['num_heads'] = args.num_heads
+    if args.adapter == 'ohsinglora':
+        adapter_kwargs['routing_mode'] = routing_mode
 
     for encoder_name in ['text', 'vision']:
         if args.encoder == encoder_name or args.encoder == 'both':
@@ -322,7 +335,7 @@ def save_adapter(args, model):
     extra_metadata = getattr(args, 'checkpoint_extra_metadata', {})
     collisions = sorted(set(metadata).intersection(extra_metadata))
     if collisions:
-        raise ValueError(f"checkpoint_extra_metadata cannot override v2 fields: {collisions}")
+        raise ValueError(f"checkpoint_extra_metadata cannot override canonical checkpoint fields: {collisions}")
     metadata.update(extra_metadata)
 
     save_data = {
@@ -357,6 +370,12 @@ def load_adapter(args, model):
 
     weights = loaded_data.get('weights')
     expected_state = adapter_state_dict(model)
+    if metadata.get('schema_version') == LEGACY_CHECKPOINT_SCHEMA_VERSION:
+        expected_state = {
+            name: value
+            for name, value in expected_state.items()
+            if not name.endswith('routing_context')
+        }
     validate_adapter_state_dict(expected_state, weights)
     validate_saturated_ramp_state(weights, args.ramp_up_steps)
 

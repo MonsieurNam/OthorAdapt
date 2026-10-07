@@ -1,0 +1,57 @@
+{
+  "schema_version": "reviewer4.gating.v1",
+  "datasets": [
+    "caltech101",
+    "dtd",
+    "eurosat",
+    "fgvc",
+    "food101",
+    "oxford_flowers",
+    "oxford_pets",
+    "ucf101"
+  ],
+  "shots": [1, 4, 16],
+  "seeds": [1, 2, 3],
+  "sentinel_datasets": ["eurosat", "caltech101"],
+  "sentinel_seed": 1,
+  "expected_trainable_parameters": 460800,
+  "method": {
+    "adapter": "ohsinglora",
+    "routing_mode": "input_independent",
+    "num_heads": 2,
+    "r": 8,
+    "alpha": 1,
+    "lambda_o": 0.03,
+    "ramp_up_steps": 100,
+    "ortho_reduction": "mean"
+  },
+  "base_command": {
+    "python": "${PYTHON}",
+    "entrypoint": "main.py",
+    "root_path": "${DATA_ROOT}",
+    "save_path": "revision_materials/reviewer4/raw/checkpoints",
+    "run_manifest": "revision_materials/reviewer4/raw/static_train_manifest.jsonl",
+    "sentinel_run_manifest": "revision_materials/reviewer4/raw/dynamic_new_train_manifest.jsonl",
+    "dynamic_run_manifest": "revision_materials/reviewer4/raw/dynamic_new_train_manifest.jsonl",
+    "log_dir": "revision_materials/reviewer4/raw/logs",
+    "split_reference_manifest": "revision_materials/reviewer4/raw/frozen_dynamic_reference.jsonl",
+    "backbone": "ViT-B/16",
+    "encoder": "both",
+    "position": "all",
+    "params": ["q", "k", "v"],
+    "n_iters": 500,
+    "batch_size": 32,
+    "loss_fn": "ce"
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 3090 24 GB",
+    "operating_system": "Ubuntu 22.04",
+    "python": "3.11.10",
+    "pytorch": "2.5.1+cu124",
+    "cuda_runtime": "12.4",
+    "cudnn": 90100,
+    "minimum_ram_gb": 32,
+    "recommended_ram_gb": 64,
+    "minimum_free_disk_gb": 150
+  }
+}

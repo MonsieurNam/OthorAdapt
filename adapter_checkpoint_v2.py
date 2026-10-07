@@ -3,8 +3,10 @@
 from collections.abc import Mapping
 
 
-CHECKPOINT_SCHEMA_VERSION = "orthadapt.adapter_checkpoint.v2"
+CHECKPOINT_SCHEMA_VERSION = "orthadapt.adapter_checkpoint.v3"
+LEGACY_CHECKPOINT_SCHEMA_VERSION = "orthadapt.adapter_checkpoint.v2"
 _CANONICAL_PARAMS = ("q", "k", "v", "o", "mlp")
+_GATED_ADAPTERS = {"gmhsinglora", "ohsinglora"}
 _REQUIRED_METADATA_FIELDS = (
     "schema_version",
     "adapter",
@@ -16,6 +18,13 @@ _REQUIRED_METADATA_FIELDS = (
     "position",
     "encoder",
     "backbone",
+    "routing_mode",
+    "routing_context_id",
+)
+_LEGACY_REQUIRED_METADATA_FIELDS = tuple(
+    field
+    for field in _REQUIRED_METADATA_FIELDS
+    if field not in {"routing_mode", "routing_context_id"}
 )
 
 
@@ -49,11 +58,31 @@ def effective_num_heads(args):
     return int(_value(args, "num_heads"))
 
 
+def effective_routing_mode(args):
+    adapter = _normalized_text(_value(args, "adapter"), "adapter")
+    requested = _normalized_text(
+        _value(args, "routing_mode", "input_conditioned"),
+        "routing_mode",
+    )
+    if requested not in {"input_conditioned", "input_independent"}:
+        raise ValueError(
+            "routing_mode must be either 'input_conditioned' or 'input_independent'"
+        )
+    if adapter not in _GATED_ADAPTERS:
+        if requested == "input_independent":
+            raise ValueError(
+                f"routing_mode=input_independent is not valid for adapter={adapter}"
+            )
+        return "not_applicable"
+    return requested
+
+
 def adapter_metadata(args):
-    """Build the canonical compatibility metadata stored in checkpoint v2."""
+    """Build canonical compatibility metadata for a checkpoint v3 payload."""
     backbone = str(_value(args, "backbone")).strip()
     if not backbone:
         raise ValueError("backbone must be non-empty")
+    routing_mode = effective_routing_mode(args)
     return {
         "schema_version": CHECKPOINT_SCHEMA_VERSION,
         "adapter": _normalized_text(_value(args, "adapter"), "adapter"),
@@ -65,33 +94,62 @@ def adapter_metadata(args):
         "position": _normalized_text(_value(args, "position"), "position"),
         "encoder": _normalized_text(_value(args, "encoder"), "encoder"),
         "backbone": backbone,
+        "routing_mode": routing_mode,
+        "routing_context_id": (
+            "normalized_ones_v1"
+            if routing_mode == "input_independent"
+            else "not_applicable"
+        ),
     }
 
 
 def validate_adapter_metadata(metadata, args):
     if not isinstance(metadata, Mapping):
-        raise ValueError("Adapter checkpoint v2 metadata must be a mapping")
+        raise ValueError("Adapter checkpoint metadata must be a mapping")
     actual_schema = metadata.get("schema_version")
-    if actual_schema != CHECKPOINT_SCHEMA_VERSION:
+    if actual_schema not in {
+        CHECKPOINT_SCHEMA_VERSION,
+        LEGACY_CHECKPOINT_SCHEMA_VERSION,
+    }:
         raise ValueError(
-            "Adapter checkpoint v2 metadata is required; "
-            f"expected schema_version={CHECKPOINT_SCHEMA_VERSION}, got {actual_schema!r}. "
+            "Adapter checkpoint v2 or v3 metadata is required; "
+            f"got schema_version={actual_schema!r}. "
             "Legacy checkpoints without saved ramp state cannot be evaluated safely."
         )
     expected = adapter_metadata(args)
-    for field in _REQUIRED_METADATA_FIELDS:
+    if actual_schema == LEGACY_CHECKPOINT_SCHEMA_VERSION:
+        if expected["routing_mode"] == "input_independent":
+            raise ValueError(
+                "Checkpoint v2 cannot establish routing_mode=input_independent; "
+                "a checkpoint v3 payload is required"
+            )
+        required_fields = _LEGACY_REQUIRED_METADATA_FIELDS
+    else:
+        required_fields = _REQUIRED_METADATA_FIELDS
+
+    for field in required_fields:
         if field not in metadata:
             raise ValueError(f"Checkpoint metadata is missing required field '{field}'")
-        if metadata[field] != expected[field]:
+        expected_value = (
+            LEGACY_CHECKPOINT_SCHEMA_VERSION
+            if field == "schema_version" and actual_schema == LEGACY_CHECKPOINT_SCHEMA_VERSION
+            else expected[field]
+        )
+        if metadata[field] != expected_value:
             raise ValueError(
                 f"Checkpoint metadata mismatch for '{field}': "
-                f"expected {expected[field]!r}, found {metadata[field]!r}"
+                f"expected {expected_value!r}, found {metadata[field]!r}"
             )
     return expected
 
 
 def is_adapter_state_key(name):
-    return "lora_" in name or "gating_network" in name or name.endswith("training_step")
+    return (
+        "lora_" in name
+        or "gating_network" in name
+        or name.endswith("training_step")
+        or name.endswith("routing_context")
+    )
 
 
 def adapter_state_dict(model):

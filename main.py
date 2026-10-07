@@ -5,7 +5,14 @@ import sys
 from datasets import build_dataset
 from datasets.utils import build_data_loader
 
-from ecr3_provenance import args_to_config, dataset_provenance
+from ecr3_provenance import args_to_config, dataset_provenance, git_revision
+from reviewer4_provenance import (
+    capture_environment,
+    load_jsonl,
+    split_identity,
+    validate_split_reference,
+    validate_target_environment,
+)
 from utils import *
 from run_utils import *
 from lora import run_lora
@@ -29,7 +36,21 @@ def main():
     dataset = build_dataset(args.dataset, args.root_path, args.shots, preprocess)
     args.run_command = sys.argv
     args.dataset_provenance = dataset_provenance(dataset)
+    args.runtime_environment = capture_environment()
+    args.git_revision = git_revision()
+    if args.split_reference_manifest:
+        validate_target_environment(args.runtime_environment)
+        validate_split_reference(
+            args.dataset,
+            args.shots,
+            args.seed,
+            args.dataset_provenance,
+            load_jsonl(args.split_reference_manifest),
+        )
     args.checkpoint_extra_metadata = {
+        'git_revision': args.git_revision,
+        'environment': args.runtime_environment,
+        'split_identity': split_identity(args.dataset_provenance),
         'ecr3': {
             'schema_version': 'ecr3.checkpoint.v1',
             'config': args_to_config(args),

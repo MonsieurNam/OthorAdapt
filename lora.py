@@ -21,6 +21,7 @@ from ecr3_provenance import build_run_record, file_sha256, write_jsonl_record
 from experiment_manifest import count_named_adapter_parameters
 from loralib.utils import apply_lora, load_adapter, save_lora, load_lora, apply_adapter, mark_only_lora_as_trainable, get_lora_parameters, save_adapter
 from loralib.layers_OH_singlora import LinearOHsingLoRA, calculate_ortho_loss
+from reviewer4_runtime import summarize_training_runtime
 
 
 def _format_duration(seconds):
@@ -30,6 +31,11 @@ def _format_duration(seconds):
     if hours:
         return f"{hours:d}:{minutes:02d}:{secs:02d}"
     return f"{minutes:02d}:{secs:02d}"
+
+
+def _cuda_synchronize():
+    if torch.cuda.is_available():
+        torch.cuda.synchronize()
 
 
 def evaluate(args, clip_model, loader, dataset):
@@ -72,20 +78,26 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
 
     selection_split = getattr(args, "selection_split", "val")
     report_test = getattr(args, "report_test", False)
+    compute_profile_only = getattr(args, "compute_profile_only", False)
     selection_loader = val_loader if selection_split == "val" else test_loader
 
     print("\nGetting textual features as CLIP's classifier.")
+    _cuda_synchronize()
+    classifier_start = time.perf_counter()
     textual_features = clip_classifier(dataset.classnames, dataset.template, clip_model)
-    selection_features, selection_labels = pre_load_features(clip_model, selection_loader)
-
-    selection_features = selection_features.cuda()
-    selection_labels = selection_labels.cuda()
-
-    clip_logits = logit_scale * selection_features @ textual_features
-    zs_selection_acc = cls_acc(clip_logits, selection_labels)
-    print(f"\n**** Zero-shot CLIP's {selection_split} accuracy: {zs_selection_acc:.2f}. ****\n")
-
-    del selection_features, selection_labels
+    _cuda_synchronize()
+    classifier_construction_seconds = time.perf_counter() - classifier_start
+    if compute_profile_only:
+        zs_selection_acc = None
+        del textual_features
+    else:
+        selection_features, selection_labels = pre_load_features(clip_model, selection_loader)
+        selection_features = selection_features.cuda()
+        selection_labels = selection_labels.cuda()
+        clip_logits = logit_scale * selection_features @ textual_features
+        zs_selection_acc = cls_acc(clip_logits, selection_labels)
+        print(f"\n**** Zero-shot CLIP's {selection_split} accuracy: {zs_selection_acc:.2f}. ****\n")
+        del selection_features, selection_labels
     torch.cuda.empty_cache()
 
     list_adapter_layers = []
@@ -121,6 +133,7 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 "selection_accuracy": acc_selection,
                 "test_accuracy": acc_test,
                 "runtime_seconds": 0.0,
+                "text_classifier_construction_seconds": classifier_construction_seconds,
                 "trainable_parameters": adapter_parameter_count,
             }
             record = build_run_record(
@@ -169,13 +182,19 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, total_iters, eta_min=1e-6)
 
     print(f"\nStarting {args.adapter.upper()} fine-tuning with {args.loss_fn.upper()} loss for {total_iters} iterations...")
-    start_time = time.time()
+    _cuda_synchronize()
+    start_time = time.perf_counter()
+    complete_epoch_seconds = []
+    partial_epoch_seconds = []
 
     scaler = torch.amp.GradScaler(device='cuda')
     count_iters = 0
 
     with tqdm(total=total_iters, initial=count_iters, desc="Training", unit="step") as progress_bar:
         while count_iters < total_iters:
+            _cuda_synchronize()
+            epoch_start = time.perf_counter()
+            steps_this_epoch = 0
             clip_model.train()
             loss_epoch, class_loss_epoch, ortho_loss_epoch, ortho_loss_raw_epoch, aux_loss_epoch = 0., 0., 0., 0., 0.
             acc_train = 0
@@ -252,7 +271,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 scheduler.step()
 
                 count_iters += 1
-                elapsed = time.time() - start_time
+                steps_this_epoch += 1
+                elapsed = time.perf_counter() - start_time
                 steps_per_second = count_iters / elapsed if elapsed > 0 else 0.0
                 remaining_steps = max(total_iters - count_iters, 0)
                 eta_seconds = remaining_steps / steps_per_second if steps_per_second > 0 else 0.0
@@ -264,6 +284,13 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                 progress_bar.update(1)
                 if count_iters >= total_iters:
                     break
+
+            _cuda_synchronize()
+            epoch_seconds = time.perf_counter() - epoch_start
+            if steps_this_epoch == len(train_loader):
+                complete_epoch_seconds.append(epoch_seconds)
+            else:
+                partial_epoch_seconds.append(epoch_seconds)
 
             if count_iters < total_iters and tot_samples > 0:
                 acc_train /= tot_samples
@@ -279,16 +306,33 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                     f'(Class: {class_loss_epoch:.4f}, Ortho-{args.ortho_reduction}: {ortho_loss_epoch:.4f}, '
                     f'Ortho-raw-sum: {ortho_loss_raw_epoch:.4f}, Aux: {aux_loss_epoch:.4f})')
 
-    end_time = time.time()
+    _cuda_synchronize()
+    end_time = time.perf_counter()
     total_finetuning_time = end_time - start_time
+    peak_allocated = torch.cuda.max_memory_allocated() if torch.cuda.is_available() else 0
+    peak_reserved = torch.cuda.max_memory_reserved() if torch.cuda.is_available() else 0
+    runtime_metrics = summarize_training_runtime(
+        complete_epoch_seconds=complete_epoch_seconds,
+        partial_epoch_seconds=partial_epoch_seconds,
+        total_steps=count_iters,
+        total_seconds=total_finetuning_time,
+        peak_allocated_bytes=peak_allocated,
+        peak_reserved_bytes=peak_reserved,
+        warmup_epochs=5,
+    )
     print(f"\nFine-tuning finished in {total_finetuning_time:.2f} seconds.")
 
-    acc_selection = evaluate(args, clip_model, selection_loader, dataset)
-    acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
-    print(f"**** Final {selection_split} accuracy with {args.adapter.upper()}: {acc_selection:.2f}. ****")
-    if acc_test is not None:
-        print(f"**** Final test accuracy with {args.adapter.upper()}: {acc_test:.2f}. ****")
-    print("")
+    if compute_profile_only:
+        acc_selection = None
+        acc_test = None
+        print("Compute-profile-only run: final accuracy evaluation was intentionally skipped.\n")
+    else:
+        acc_selection = evaluate(args, clip_model, selection_loader, dataset)
+        acc_test = evaluate(args, clip_model, test_loader, dataset) if report_test else None
+        print(f"**** Final {selection_split} accuracy with {args.adapter.upper()}: {acc_selection:.2f}. ****")
+        if acc_test is not None:
+            print(f"**** Final test accuracy with {args.adapter.upper()}: {acc_test:.2f}. ****")
+        print("")
 
     checkpoint_path = ""
     if args.save_path is not None:
@@ -306,9 +350,11 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
             "test_accuracy": acc_test,
             "fine_tuning_seconds": total_finetuning_time,
             "runtime_seconds": total_finetuning_time,
+            "text_classifier_construction_seconds": classifier_construction_seconds,
             "trainable_parameters": trainable_parameters,
             "train_total_iterations": total_iters,
             "ortho_reduction": getattr(args, "ortho_reduction", "sum"),
+            **runtime_metrics,
         }
         record = build_run_record(
             args,

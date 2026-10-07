@@ -18,8 +18,8 @@ def protocol():
         "shots": [4],
         "seeds": [1, 2],
         "methods": [
-            {"adapter": "lora", "r": 4, "alpha": 1},
-            {"adapter": "ohsinglora", "r": 4, "alpha": 1, "num_heads": 2, "lambda_o": 0.0},
+            {"adapter": "lora", "r": 8, "alpha": 1},
+            {"adapter": "ohsinglora", "r": 8, "alpha": 1, "num_heads": 2, "lambda_o": 0.03, "ramp_up_steps": 100},
         ],
         "base_command": {
             "python": "$PYTHON",
@@ -51,9 +51,9 @@ class Phase3MainExperimentTest(unittest.TestCase):
         self.assertTrue(all("--sweep_mode" not in command for command in commands))
         self.assertTrue(all("--run_manifest revision_materials/results/phase3_main_results.jsonl" in command for command in commands))
         self.assertTrue(all("--num_heads" not in command and "--lambda_o" not in command for command in commands if "--adapter lora" in command))
-        self.assertTrue(any("--adapter ohsinglora" in command and "--num_heads 2" in command and "--r 4" in command and "--lambda_o 0.0" in command for command in commands))
-        self.assertTrue(any("--filename eurosat_4shot_seed1_test_ohsinglora_h2_r4_lo0p0" in command for command in commands))
-        self.assertTrue(any("eurosat_4shot_seed1_test_ohsinglora_h2_r4_lo0p0_${RUN_STAMP}.log" in command for command in commands))
+        self.assertTrue(any("--adapter ohsinglora" in command and "--num_heads 2" in command and "--r 8" in command and "--lambda_o 0.03" in command and "--ramp_up_steps 100" in command for command in commands))
+        self.assertTrue(any("--filename eurosat_4shot_seed1_test_ohsinglora_h2_r8_lo0p03_ramp100" in command for command in commands))
+        self.assertTrue(any("eurosat_4shot_seed1_test_ohsinglora_h2_r8_lo0p03_ramp100_${RUN_STAMP}.log" in command for command in commands))
 
     def test_frozen_phase3_protocol_generates_144_runs(self):
         frozen = load_protocol("revision_materials/plan/phase3_main_protocol.yaml")
@@ -67,11 +67,11 @@ class Phase3MainExperimentTest(unittest.TestCase):
         self.assertEqual(sum("--adapter lora" in command for command in commands), 72)
         self.assertTrue(all("--num_heads" not in command and "--lambda_o" not in command for command in commands if "--adapter lora" in command))
         self.assertTrue(all("--adapter singlora" not in command for command in commands))
-        self.assertTrue(all("--lambda_o 0.03" not in command for command in commands if "--adapter ohsinglora" in command))
+        self.assertTrue(all("--lambda_o 0.03" in command and "--ramp_up_steps 100" in command for command in commands if "--adapter ohsinglora" in command))
 
     def test_validate_protocol_rejects_unselected_orthoadapt_config(self):
         bad = protocol()
-        bad["methods"][1]["lambda_o"] = 0.03
+        bad["methods"][1]["lambda_o"] = 0.0
 
         with self.assertRaisesRegex(ValueError, "selected OrthoAdapt"):
             validate_protocol(bad)

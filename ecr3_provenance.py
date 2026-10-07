@@ -114,6 +114,7 @@ def args_to_config(args):
             "run_command",
             "checkpoint_extra_metadata",
             "git_revision",
+            "runtime_environment",
         }:
             continue
         if isinstance(value, (str, int, float, bool)) or value is None:
@@ -153,6 +154,7 @@ def build_run_record(
         "schema_version": "ecr3.run.v1",
         "created_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "git_revision": revision,
+        "environment": getattr(args, "runtime_environment", {}),
         "command": list(command),
         "cwd": os.getcwd(),
         "config": config,

@@ -19,7 +19,7 @@ def protocol():
         "seeds": [1, 2],
         "methods": [
             {"adapter": "lora", "r": 2, "alpha": 1},
-            {"adapter": "ohsinglora", "r": 2, "alpha": 1, "num_heads": 2, "lambda_o": 0.03},
+            {"adapter": "ohsinglora", "r": 2, "alpha": 1, "num_heads": 2, "lambda_o": 0.03, "ramp_up_steps": 100},
         ],
         "base_command": {
             "python": "$PYTHON",
@@ -52,9 +52,9 @@ class Phase3BSameParamExperimentTest(unittest.TestCase):
         self.assertEqual(sum("--adapter ohsinglora" in command for command in commands), 4)
         self.assertTrue(all("--adapter lora --r 2 --alpha 1" in command for command in commands if "--adapter lora" in command))
         self.assertTrue(all("--num_heads" not in command and "--lambda_o" not in command for command in commands if "--adapter lora" in command))
-        self.assertTrue(any("--adapter ohsinglora --num_heads 2 --r 2 --alpha 1 --lambda_o 0.03" in command for command in commands))
+        self.assertTrue(any("--adapter ohsinglora --num_heads 2 --r 2 --alpha 1 --lambda_o 0.03 --ramp_up_steps 100" in command for command in commands))
         self.assertTrue(any("--filename eurosat_4shot_seed1_test_lora_r2" in command for command in commands))
-        self.assertTrue(any("--filename eurosat_4shot_seed1_test_ohsinglora_h2_r2_lo0p03" in command for command in commands))
+        self.assertTrue(any("--filename eurosat_4shot_seed1_test_ohsinglora_h2_r2_lo0p03_ramp100" in command for command in commands))
 
     def test_frozen_protocol_generates_144_runs(self):
         frozen = load_protocol("revision_materials/plan/phase3b_same_param_protocol.yaml")

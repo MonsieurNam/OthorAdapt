@@ -32,10 +32,14 @@ def format_finish_time(dt):
 def build_report(
     cost_per_hour_vnd=5000,
     now=None,
-    commands_path=runner.DEFAULT_COMMANDS,
-    manifest_path=runner.DEFAULT_MANIFEST,
+    commands_path=None,
+    manifest_path=None,
     runtime_sources=None,
 ):
+    if commands_path is None:
+        commands_path = runner.DEFAULT_COMMANDS
+    if manifest_path is None:
+        manifest_path = runner.DEFAULT_MANIFEST
     if now is None:
         now = datetime.now(timezone.utc)
     elif now.tzinfo is None:
@@ -82,6 +86,7 @@ def build_report(
         "eta_hours": round(eta_hours, 1),
         "cost_remaining_vnd": int(round(eta_hours) * cost_per_hour_vnd),
         "estimated_finish": f"{format_finish_time(finish_vn)} VN",
+        "estimated_finish_utc": f"{format_finish_time(finish_utc)} UTC",
         "estimated_finish_vn": f"{format_finish_time(finish_vn)} VN",
         "rate": rate,
     }

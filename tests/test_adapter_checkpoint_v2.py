@@ -8,6 +8,7 @@ import torch.nn as nn
 
 from adapter_checkpoint_v2 import (
     CHECKPOINT_SCHEMA_VERSION,
+    LEGACY_CHECKPOINT_SCHEMA_VERSION,
     adapter_metadata,
     validate_adapter_metadata,
 )
@@ -34,6 +35,7 @@ def args_for(save_path, **overrides):
         "encoder": "both",
         "lambda_o": 0.0,
         "ortho_reduction": "mean",
+        "routing_mode": "input_conditioned",
         "checkpoint_extra_metadata": {"ecr3": {"schema_version": "ecr3.checkpoint.v1"}},
     }
     values.update(overrides)
@@ -53,7 +55,7 @@ class TinyAdapterModel(nn.Module):
 
 
 class TinyOHAdapterModel(nn.Module):
-    def __init__(self, ramp_up_steps=2):
+    def __init__(self, ramp_up_steps=2, routing_mode="input_conditioned"):
         super().__init__()
         base = nn.Linear(4, 4, bias=False)
         with torch.no_grad():
@@ -64,6 +66,7 @@ class TinyOHAdapterModel(nn.Module):
             lora_alpha=1,
             ramp_up_steps=ramp_up_steps,
             num_heads=2,
+            routing_mode=routing_mode,
         )
 
     def forward(self, inputs):
@@ -79,6 +82,8 @@ class AdapterCheckpointV2Test(unittest.TestCase):
         self.assertEqual(metadata["num_heads"], 1)
         self.assertEqual(metadata["params"], ["q", "k", "v"])
         self.assertEqual(metadata["ramp_up_steps"], 2)
+        self.assertEqual(metadata["routing_mode"], "not_applicable")
+        self.assertEqual(metadata["routing_context_id"], "not_applicable")
 
     def test_metadata_validation_reports_every_mismatched_compatibility_field(self):
         args = args_for("unused")
@@ -92,6 +97,8 @@ class AdapterCheckpointV2Test(unittest.TestCase):
             "position": "top3",
             "encoder": "vision",
             "backbone": "ViT-B/32",
+            "routing_mode": "input_independent",
+            "routing_context_id": "normalized_ones_v1",
         }
         for field, replacement in replacements.items():
             with self.subTest(field=field):
@@ -153,6 +160,84 @@ class AdapterCheckpointV2Test(unittest.TestCase):
             torch.testing.assert_close(fresh(inputs), expected)
             payload = torch.load(checkpoint_path, map_location="cpu")
             self.assertIn("adapter.gating_network.0.weight", payload["weights"])
+            self.assertIn("adapter.routing_context", payload["weights"])
+
+    def test_input_independent_roundtrip_and_mode_mismatch_rejection(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            static_args = args_for(
+                tmp,
+                adapter="ohsinglora",
+                num_heads=2,
+                routing_mode="input_independent",
+            )
+            model = TinyOHAdapterModel(routing_mode="input_independent")
+            model.adapter.training_step.fill_(2)
+            checkpoint_path = save_adapter(static_args, model)
+            payload = torch.load(checkpoint_path, map_location="cpu")
+
+            self.assertEqual(payload["metadata"]["routing_mode"], "input_independent")
+            self.assertEqual(
+                payload["metadata"]["routing_context_id"], "normalized_ones_v1"
+            )
+            load_adapter(
+                static_args,
+                TinyOHAdapterModel(routing_mode="input_independent"),
+            )
+
+            dynamic_args = args_for(
+                tmp,
+                adapter="ohsinglora",
+                num_heads=2,
+                routing_mode="input_conditioned",
+            )
+            with self.assertRaisesRegex(ValueError, "routing_mode"):
+                validate_adapter_metadata(payload["metadata"], dynamic_args)
+
+    def test_v2_metadata_is_only_accepted_for_non_static_routing(self):
+        dynamic_args = args_for(
+            "unused",
+            adapter="ohsinglora",
+            num_heads=2,
+            routing_mode="input_conditioned",
+        )
+        legacy = adapter_metadata(dynamic_args)
+        legacy["schema_version"] = LEGACY_CHECKPOINT_SCHEMA_VERSION
+        legacy.pop("routing_mode")
+        legacy.pop("routing_context_id")
+
+        validate_adapter_metadata(legacy, dynamic_args)
+
+        static_args = args_for(
+            "unused",
+            adapter="ohsinglora",
+            num_heads=2,
+            routing_mode="input_independent",
+        )
+        with self.assertRaisesRegex(ValueError, "input_independent"):
+            validate_adapter_metadata(legacy, static_args)
+
+    def test_v2_dynamic_checkpoint_loads_without_routing_context_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            args = args_for(
+                tmp,
+                adapter="ohsinglora",
+                num_heads=2,
+                routing_mode="input_conditioned",
+            )
+            trained = TinyOHAdapterModel(routing_mode="input_conditioned")
+            trained.adapter.training_step.fill_(2)
+            checkpoint_path = save_adapter(args, trained)
+            payload = torch.load(checkpoint_path, map_location="cpu")
+            payload["metadata"]["schema_version"] = LEGACY_CHECKPOINT_SCHEMA_VERSION
+            payload["metadata"].pop("routing_mode")
+            payload["metadata"].pop("routing_context_id")
+            payload["weights"].pop("adapter.routing_context")
+            torch.save(payload, checkpoint_path)
+
+            fresh = TinyOHAdapterModel(routing_mode="input_conditioned")
+            load_adapter(args, fresh)
+
+            self.assertEqual(fresh.adapter.training_step.item(), 2)
 
     def test_load_rejects_unsaturated_ramp(self):
         with tempfile.TemporaryDirectory() as tmp:
