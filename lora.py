@@ -188,6 +188,9 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
     partial_epoch_seconds = []
 
     scaler = torch.amp.GradScaler(device='cuda')
+    optimization_observer = getattr(args, '_optimization_observer', None)
+    if optimization_observer is not None:
+        optimization_observer.on_start(clip_model)
     count_iters = 0
 
     with tqdm(total=total_iters, initial=count_iters, desc="Training", unit="step") as progress_bar:
@@ -201,6 +204,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
             tot_samples = 0
 
             for i, (images, target) in enumerate(train_loader):
+                if optimization_observer is not None:
+                    optimization_observer.on_batch(count_iters, images, target)
                 images, target = images.cuda(), target.cuda()
 
                 if args.encoder == 'text' or args.encoder == 'both':
@@ -259,8 +264,12 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
                     optimizer_center.zero_grad()
 
                 scaler.scale(loss).backward()
+                if optimization_observer is not None:
+                    optimization_observer.on_backward(count_iters, loss, optimizer_params, scaler.get_scale())
                 torch.nn.utils.clip_grad_norm_(optimizer_params, max_norm=1.0)
 
+                if optimization_observer is not None:
+                    optimization_old_scale = scaler.get_scale()
                 scaler.step(optimizer)
                 if optimizer_center:
                     for param in center_loss_fn.parameters():
@@ -269,6 +278,8 @@ def run_lora(args, clip_model, logit_scale, dataset, train_loader, val_loader, t
 
                 scaler.update()
                 scheduler.step()
+                if optimization_observer is not None:
+                    optimization_observer.on_step(count_iters, optimization_old_scale, scaler.get_scale())
 
                 count_iters += 1
                 steps_this_epoch += 1

@@ -7,6 +7,7 @@ import numpy as np
 import torch
 
 from ecr3_provenance import validate_reporting_policy
+from execution_backends import validate_execution_backends
 from lora import run_lora
 
 def set_random_seed(seed):
@@ -35,6 +36,10 @@ def get_arguments():
     parser.add_argument('--adapter', type=str, default='lora',
                         choices=['lora', 'singlora', 'gmhsinglora', 'ohsinglora'], # Thêm 'gmhsinglora'
                         help='The type of adapter to use for fine-tuning.')
+    parser.add_argument('--adapter_compute', default='dense', choices=['dense', 'factorized'],
+                        help='OH square q/k/v projection execution; dense preserves the reference implementation.')
+    parser.add_argument('--attention_backend', default='manual', choices=['manual', 'sdpa'],
+                        help='OH attention execution; SDPA falls back to manual attention for unsupported calls.')
 
 
     # MH-SingLoRA-specific arguments
@@ -104,6 +109,10 @@ def get_arguments():
     parser.add_argument('--gamma', type=float, default=2.0,
                     help='[Focal Loss only] The focusing parameter gamma.')
     args = parser.parse_args()
+    try:
+        validate_execution_backends(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     if args.routing_mode == 'input_independent' and args.adapter != 'ohsinglora':
         parser.error('--routing_mode input_independent requires --adapter ohsinglora')
     if args.compute_profile_only and args.eval_only:

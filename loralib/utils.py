@@ -5,6 +5,7 @@ import os
 import torch
 import torch.nn as nn
 from typing import Dict, List
+from execution_backends import validate_execution_backends
 
 from adapter_checkpoint_v2 import (
     LEGACY_CHECKPOINT_SCHEMA_VERSION,
@@ -105,6 +106,7 @@ def get_lora_parameters(model, bias='none'):
     return params
 
 def apply_lora(args, clip_model):
+    validate_execution_backends(args)
     list_lora_layers = []
     if args.encoder == 'text' or args.encoder == 'both':
         indices = INDEX_POSITIONS_TEXT[args.position]
@@ -239,6 +241,7 @@ def apply_adapter(args, clip_model):
     """
     Hàm chung để áp dụng bất kỳ loại adapter nào.
     """
+    validate_execution_backends(args)
     adapter_map = {
         'singlora': LinearSingLoRA,
         'gmhsinglora': LinearGMHSingLoRA,
@@ -271,6 +274,7 @@ def apply_adapter(args, clip_model):
         adapter_kwargs['num_heads'] = args.num_heads
     if args.adapter == 'ohsinglora':
         adapter_kwargs['routing_mode'] = routing_mode
+        adapter_kwargs['adapter_compute'] = getattr(args, 'adapter_compute', 'dense')
 
     for encoder_name in ['text', 'vision']:
         if args.encoder == encoder_name or args.encoder == 'both':
@@ -289,6 +293,7 @@ def apply_adapter(args, clip_model):
                         block.attn,
                         linear_adapter_class=linear_adapter_class,
                         enable_lora=args.params,
+                        attention_backend=getattr(args, 'attention_backend', 'manual'),
                         **adapter_kwargs
                     )
                     block.attn = new_mha

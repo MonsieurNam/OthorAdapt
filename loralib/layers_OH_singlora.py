@@ -25,8 +25,14 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         ramp_up_steps: int = 100,
         num_heads: int = 2,
         routing_mode: str = "input_conditioned",
+        adapter_compute: str = "dense",
         **kwargs
     ):
+        if adapter_compute not in {"dense", "factorized"}:
+            raise ValueError("adapter_compute must be 'dense' or 'factorized'")
+        if adapter_compute == "factorized" and existing_linear.in_features != existing_linear.out_features:
+            raise ValueError("adapter_compute=factorized supports square q/k/v projections only")
+        self.adapter_compute = adapter_compute
         # Khởi tạo các lớp cha y hệt như LinearGMHSingLoRA
         nn.Linear.__init__(
             self,
@@ -117,9 +123,17 @@ class LinearOHsingLoRA(nn.Linear, SingLoRALayer):
         lora_A_heads_out = lora_A_heads[:, :self.out_features, :]
         lora_A_heads_in = lora_A_heads[:, :self.in_features, :]
 
-        all_delta_W = lora_A_heads_out @ lora_A_heads_in.transpose(1, 2)
+        if self.adapter_compute == "factorized":
+            low = torch.einsum('...i,hik->...hk', x, lora_A_heads_in)
+            outputs = torch.einsum('...hk,hok->...ho', low, lora_A_heads_out)
+            # Explicit reduction dtype prevents CUDA autocast promoting to FP32.
+            lora_adjustment = (
+                outputs * gating_weights.to(outputs.dtype).unsqueeze(-1)
+            ).sum(dim=-2, dtype=outputs.dtype)
+        else:
+            all_delta_W = lora_A_heads_out @ lora_A_heads_in.transpose(1, 2)
 
-        lora_adjustment = torch.einsum('...i,hio,...h->...o', x, all_delta_W, gating_weights)
+            lora_adjustment = torch.einsum('...i,hio,...h->...o', x, all_delta_W, gating_weights)
 
         final_adjustment = lora_adjustment * self.u() * self.scaling
 

@@ -12,6 +12,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+import weakref
 from typing import Optional, List, Tuple
 
 
@@ -310,9 +311,23 @@ class PlainMultiheadAttentionAdapter(nn.Module):
             lora_alpha: int = 1,
             ramp_up_steps: int = 1000,
             enable_lora: list = ['q', 'k', 'v'],
+            attention_backend: str = "manual",
             **kwargs
         ):
         super().__init__()
+
+        if attention_backend not in {"manual", "sdpa"}:
+            raise ValueError("attention_backend must be 'manual' or 'sdpa'")
+        if attention_backend != "manual" or kwargs.get("adapter_compute", "dense") != "dense":
+            from .layers_OH_singlora import LinearOHsingLoRA
+            if not issubclass(linear_adapter_class, LinearOHsingLoRA):
+                raise ValueError("Nondefault execution backends require adapter=ohsinglora (LinearOHsingLoRA)")
+            if not set(enable_lora).issubset({'q', 'k', 'v'}):
+                raise ValueError("Nondefault execution backends support square q/k/v projections only")
+        self.attention_backend = attention_backend
+        # Plain attributes: neither counters nor cache enter checkpoints/state_dict.
+        self.execution_counts = dict(sdpa=0, manual=0, fallback=0, mask_validations=0)
+        self._causal_mask_cache = None
 
         self.embed_dim = existing_mha.embed_dim
         self.num_heads = existing_mha.num_heads
@@ -353,6 +368,32 @@ class PlainMultiheadAttentionAdapter(nn.Module):
             self.v_proj = linear_adapter_class(self.v_proj, **adapter_kwargs)
         if 'o' in enable_lora:
             self.out_proj = linear_adapter_class(self.out_proj, **adapter_kwargs)
+
+    def _standard_causal_mask(self, mask, tgt_len, src_len):
+        """Validate once per tensor identity/version; mutated masks are rechecked.
+
+        Only the exact square additive CLIP causal mask is eligible. Inference
+        tensors have no version counter, so cannot safely reuse validation.
+        """
+        if (mask.ndim != 2 or mask.shape != (tgt_len, src_len)
+                or tgt_len != src_len or not mask.is_floating_point()
+                or mask.requires_grad):
+            return False
+        try:
+            version = mask._version
+        except RuntimeError:
+            version = None
+        cached = self._causal_mask_cache
+        if version is not None and cached is not None:
+            ref, previous_version, supported = cached
+            if ref() is mask and previous_version == version:
+                return supported
+        self.execution_counts['mask_validations'] += 1
+        upper = torch.ones(mask.shape, device=mask.device, dtype=torch.bool).triu_(1)
+        supported = bool(torch.where(upper, torch.isneginf(mask), mask == 0).all().item())
+        self._causal_mask_cache = (weakref.ref(mask), version, supported) if version is not None else None
+        return supported
+
     def forward(
             self,
             query: torch.Tensor,
@@ -370,6 +411,15 @@ class PlainMultiheadAttentionAdapter(nn.Module):
             tgt_len, bsz, embed_dim = query.shape
             src_len = key.shape[0]
 
+            # Decide before projections, so a fallback advances the ramp once.
+            use_sdpa = (self.attention_backend == 'sdpa' and not need_weights
+                        and self.dropout == 0 and key_padding_mask is None)
+            if use_sdpa and attn_mask is not None:
+                use_sdpa = self._standard_causal_mask(attn_mask, tgt_len, src_len)
+            self.execution_counts['sdpa' if use_sdpa else 'manual'] += 1
+            if self.attention_backend == 'sdpa' and not use_sdpa:
+                self.execution_counts['fallback'] += 1
+
             q = self.q_proj(query)
             k = self.k_proj(key)
             v = self.v_proj(value)
@@ -377,6 +427,17 @@ class PlainMultiheadAttentionAdapter(nn.Module):
             q = q.view(tgt_len, bsz, self.num_heads, self.head_dim).permute(1, 2, 0, 3)
             k = k.view(src_len, bsz, self.num_heads, self.head_dim).permute(1, 2, 0, 3)
             v = v.view(src_len, bsz, self.num_heads, self.head_dim).permute(1, 2, 0, 3)
+
+            if use_sdpa:
+                # A validated CLIP mask is exactly equivalent to is_causal=True.
+                attn_output = F.scaled_dot_product_attention(
+                    q, k, v, dropout_p=0.0, is_causal=attn_mask is not None,
+                )
+                attn_output = attn_output.permute(2, 0, 1, 3).contiguous().view(tgt_len, bsz, embed_dim)
+                attn_output = self.out_proj(attn_output)
+                if self.batch_first:
+                    attn_output = attn_output.transpose(0, 1)
+                return attn_output, None
 
             attn_scores = (q @ k.transpose(-2, -1)) / math.sqrt(self.head_dim)
 
